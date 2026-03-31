@@ -14,7 +14,7 @@ type Response struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 	Data    any    `json:"data"`
-	Meta    any    `json:"meta"`
+	Meta    any    `json:"meta,omitempty"`
 }
 
 type ErrorResponse struct {

@@ -13,6 +13,7 @@ import (
 	"github.com/gorilla/mux"
 	"gorm.io/gorm"
 
+	asientohandler "sistema_venta_pasajes/internal/asiento/handler"
 	conductorhandler "sistema_venta_pasajes/internal/conductor/handler"
 	empresahandler "sistema_venta_pasajes/internal/empresa/handler"
 	pasajerohandler "sistema_venta_pasajes/internal/pasajero/handler"
@@ -65,6 +66,9 @@ func NewRouter(db *gorm.DB) *mux.Router {
 
 	// Registro de rutas de vehiculo
 	vehiculohandler.RegisterRoutes(api, db)
+
+	// Registro de rutas de asiento
+	asientohandler.RegisterAsientoRoutes(api, db)
 
 	// Handler global para OPTIONS (preflight CORS)
 	router.Methods(http.MethodOptions).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
