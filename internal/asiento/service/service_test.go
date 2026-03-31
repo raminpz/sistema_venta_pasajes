@@ -32,7 +32,7 @@ func TestAsientoService_Create(t *testing.T) {
 		},
 	}
 	svc := NewAsientoService(repo)
-	in := input.CreateAsientoInput{IDVehiculo: 2, NumeroAsiento: "A1"}
+	in := input.CreateAsientoInput{IDVehiculo: 2, NumeroAsiento: "A1", Estado: "ACTIVO"}
 	asiento, err := svc.Create(in)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -92,7 +92,7 @@ func TestAsientoService_Update(t *testing.T) {
 		},
 	}
 	svc := NewAsientoService(repo)
-	err := svc.Update(1, input.UpdateAsientoInput{NumeroAsiento: "B2"})
+	err := svc.Update(1, input.UpdateAsientoInput{NumeroAsiento: "B2", Estado: "ACTIVO"})
 	if err != nil || !updated {
 		t.Errorf("expected update, got err %v, updated %v", err, updated)
 	}
