@@ -183,47 +183,47 @@ func validateCreateEncomiendaInput(in input.CreateEncomiendaInput) error {
 	details := map[string]string{}
 
 	if in.IDVenta <= 0 {
-		details["id_venta"] = "El ID de la venta es obligatorio y debe ser mayor a 0"
+		details["id_venta"] = util.MSG_ENCOMIENDA_ID_VENTA_REQUIRED
 	}
 	if in.IDProgramacion <= 0 {
-		details["id_programacion"] = "El ID de la programación es obligatorio y debe ser mayor a 0"
+		details["id_programacion"] = util.MSG_ENCOMIENDA_ID_PROG_REQUIRED
 	}
 	if in.RemitenteNombre == "" {
-		details["remitente_nombre"] = "El nombre del remitente es obligatorio"
+		details["remitente_nombre"] = util.MSG_ENCOMIENDA_REMITENTE_REQUIRED
 	}
 	if in.DestinatarioNombre == "" {
-		details["destinatario_nombre"] = "El nombre del destinatario es obligatorio"
+		details["destinatario_nombre"] = util.MSG_ENCOMIENDA_DESTINATARIO_REQUIRED
 	}
 	if in.Costo <= 0 {
-		details["costo"] = "El costo es obligatorio y debe ser mayor a 0"
+		details["costo"] = util.MSG_ENCOMIENDA_COST_REQUIRED
 	}
 
 	// Campos obligatorios adicionales
 	if in.RemitenteDoc == "" {
-		details["remitente_doc"] = "El documento del remitente es obligatorio"
+		details["remitente_doc"] = util.MSG_ENCOMIENDA_REMITENTE_DOC_REQUIRED
 	} else if len(in.RemitenteDoc) > 20 {
-		details["remitente_doc"] = "El documento del remitente no puede exceder 20 caracteres"
+		details["remitente_doc"] = util.MSG_ENCOMIENDA_REMITENTE_DOC_MAXLEN
 	}
 	if in.DestinatarioTel == "" {
-		details["destinatario_tel"] = "El telefono del destinatario es obligatorio"
+		details["destinatario_tel"] = util.MSG_ENCOMIENDA_DEST_TEL_REQUIRED
 	} else if len(in.DestinatarioTel) != 9 {
-		details["destinatario_tel"] = "El telefono del destinatario debe tener 9 digitos"
+		details["destinatario_tel"] = util.MSG_ENCOMIENDA_DEST_TEL_LEN
 	} else if !isDigits(in.DestinatarioTel) {
-		details["destinatario_tel"] = "El telefono del destinatario debe contener solo numeros"
+		details["destinatario_tel"] = util.MSG_ENCOMIENDA_DEST_TEL_NUMERIC
 	}
 
 	// Validaciones de campos opcionales
 	if in.PesoKg != nil && *in.PesoKg <= 0 {
-		details["peso_kg"] = "El peso debe ser mayor a 0"
+		details["peso_kg"] = util.MSG_ENCOMIENDA_PESO_INVALID
 	}
 	if in.DestinatarioDoc != nil && *in.DestinatarioDoc == "" {
-		details["destinatario_doc"] = "El documento del destinatario no puede estar vacio"
+		details["destinatario_doc"] = util.MSG_ENCOMIENDA_DEST_DOC_EMPTY
 	}
 	if in.Descripcion != "" && len(in.Descripcion) > 300 {
-		details["descripcion"] = "La descripción no puede exceder 300 caracteres"
+		details["descripcion"] = util.MSG_ENCOMIENDA_DESCRIPCION_MAXLEN
 	}
 	if in.Estado != "" && !util.IsValidEstado(in.Estado) {
-		details["estado"] = "Estado inválido. Use: PENDIENTE, ENTREGADO o DEVUELTO"
+		details["estado"] = util.MSG_ENCOMIENDA_ESTADO_INVALID
 	}
 
 	if len(details) > 0 {
@@ -237,47 +237,47 @@ func validateUpdateEncomiendaInput(in input.UpdateEncomiendaInput) error {
 	details := map[string]string{}
 
 	if in.IDVenta <= 0 {
-		details["id_venta"] = "El ID de la venta es obligatorio y debe ser mayor a 0"
+		details["id_venta"] = util.MSG_ENCOMIENDA_ID_VENTA_REQUIRED
 	}
 	if in.IDProgramacion <= 0 {
-		details["id_programacion"] = "El ID de la programación es obligatorio y debe ser mayor a 0"
+		details["id_programacion"] = util.MSG_ENCOMIENDA_ID_PROG_REQUIRED
 	}
 	if in.RemitenteNombre == "" {
-		details["remitente_nombre"] = "El nombre del remitente es obligatorio"
+		details["remitente_nombre"] = util.MSG_ENCOMIENDA_REMITENTE_REQUIRED
 	}
 	if in.DestinatarioNombre == "" {
-		details["destinatario_nombre"] = "El nombre del destinatario es obligatorio"
+		details["destinatario_nombre"] = util.MSG_ENCOMIENDA_DESTINATARIO_REQUIRED
 	}
 	if in.Costo <= 0 {
-		details["costo"] = "El costo es obligatorio y debe ser mayor a 0"
+		details["costo"] = util.MSG_ENCOMIENDA_COST_REQUIRED
 	}
 
 	// Campos obligatorios adicionales
 	if in.RemitenteDoc == "" {
-		details["remitente_doc"] = "El documento del remitente es obligatorio"
+		details["remitente_doc"] = util.MSG_ENCOMIENDA_REMITENTE_DOC_REQUIRED
 	} else if len(in.RemitenteDoc) > 20 {
-		details["remitente_doc"] = "El documento del remitente no puede exceder 20 caracteres"
+		details["remitente_doc"] = util.MSG_ENCOMIENDA_REMITENTE_DOC_MAXLEN
 	}
 	if in.DestinatarioTel == "" {
-		details["destinatario_tel"] = "El telefono del destinatario es obligatorio"
+		details["destinatario_tel"] = util.MSG_ENCOMIENDA_DEST_TEL_REQUIRED
 	} else if len(in.DestinatarioTel) != 9 {
-		details["destinatario_tel"] = "El telefono del destinatario debe tener 9 digitos"
+		details["destinatario_tel"] = util.MSG_ENCOMIENDA_DEST_TEL_LEN
 	} else if !isDigits(in.DestinatarioTel) {
-		details["destinatario_tel"] = "El telefono del destinatario debe contener solo numeros"
+		details["destinatario_tel"] = util.MSG_ENCOMIENDA_DEST_TEL_NUMERIC
 	}
 
 	// Validaciones de campos opcionales
 	if in.PesoKg != nil && *in.PesoKg <= 0 {
-		details["peso_kg"] = "El peso debe ser mayor a 0"
+		details["peso_kg"] = util.MSG_ENCOMIENDA_PESO_INVALID
 	}
 	if in.DestinatarioDoc != nil && *in.DestinatarioDoc == "" {
-		details["destinatario_doc"] = "El documento del destinatario no puede estar vacio"
+		details["destinatario_doc"] = util.MSG_ENCOMIENDA_DEST_DOC_EMPTY
 	}
 	if in.Descripcion != "" && len(in.Descripcion) > 300 {
-		details["descripcion"] = "La descripción no puede exceder 300 caracteres"
+		details["descripcion"] = util.MSG_ENCOMIENDA_DESCRIPCION_MAXLEN
 	}
 	if in.Estado != "" && !util.IsValidEstado(in.Estado) {
-		details["estado"] = "Estado inválido. Use: PENDIENTE, ENTREGADO o DEVUELTO"
+		details["estado"] = util.MSG_ENCOMIENDA_ESTADO_INVALID
 	}
 
 	if len(details) > 0 {

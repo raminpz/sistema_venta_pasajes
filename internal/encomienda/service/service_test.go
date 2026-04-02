@@ -93,10 +93,27 @@ func TestServiceCreateInvalidEstado(t *testing.T) {
 		RemitenteDoc:       "12345678",
 		DestinatarioNombre: "B",
 		DestinatarioTel:    "987654321",
-		Estado:             "EN_TRANSITO",
+		Estado:             "CANCELADO",
 	})
 	if err == nil {
 		t.Fatal("se esperaba error por estado invalido")
+	}
+}
+
+func TestServiceCreateEstadoEnCursoInvalido(t *testing.T) {
+	s := NewEncomiendaService(&fakeEncomiendaRepo{})
+	_, err := s.Create(input.CreateEncomiendaInput{
+		IDVenta:            1,
+		IDProgramacion:     1,
+		Costo:              25,
+		RemitenteNombre:    "Juan",
+		RemitenteDoc:       "12345678",
+		DestinatarioNombre: "Maria",
+		DestinatarioTel:    "987654321",
+		Estado:             "EN_CURSO",
+	})
+	if err == nil {
+		t.Fatal("se esperaba error por estado EN_CURSO invalido")
 	}
 }
 

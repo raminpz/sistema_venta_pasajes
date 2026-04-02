@@ -114,8 +114,8 @@ func TestParseDBErrorFK1451(t *testing.T) {
 // Test: Validation error tiene estructura correcta
 func TestValidationErrorStructure(t *testing.T) {
 	details := map[string]string{
-		"id_venta": "El ID de la venta es obligatorio y debe ser mayor a 0",
-		"costo":    "El costo es obligatorio y debe ser mayor a 0",
+		"id_venta": util.MSG_ENCOMIENDA_ID_VENTA_REQUIRED,
+		"costo":    util.MSG_ENCOMIENDA_COST_REQUIRED,
 	}
 
 	appErr := pkg.Validation(util.MSG_ENCOMIENDA_VALIDATION, details)

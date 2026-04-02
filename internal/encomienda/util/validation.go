@@ -12,7 +12,7 @@ import (
 
 func IsValidEstado(estado string) bool {
 	switch estado {
-	case STATUS_PENDIENTE, STATUS_ENTREGADO, STATUS_DEVUELTO:
+	case STATUS_PENDIENTE, STATUS_EN_TRANSITO, STATUS_ENTREGADO, STATUS_DEVUELTO:
 		return true
 	default:
 		return false
