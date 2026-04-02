@@ -22,6 +22,7 @@ import (
 	terminalhandler "sistema_venta_pasajes/internal/terminal/handler"
 	usuariohandler "sistema_venta_pasajes/internal/usuario/handler"
 	vehiculohandler "sistema_venta_pasajes/internal/vehiculo/handler"
+	ventahandler "sistema_venta_pasajes/internal/venta/handler"
 )
 
 type AppHandler func(w http.ResponseWriter, r *http.Request) error
@@ -73,6 +74,9 @@ func NewRouter(db *gorm.DB) *mux.Router {
 
 	// Registro de rutas de usuario
 	usuariohandler.RegisterUsuarioHandlers(api, db)
+
+	// Registro de rutas de venta
+	ventahandler.RegisterRoutes(api, db)
 	// Handler global para OPTIONS (preflight CORS)
 	router.Methods(http.MethodOptions).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
