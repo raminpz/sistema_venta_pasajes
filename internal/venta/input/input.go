@@ -11,7 +11,6 @@ type VentaCreateInput struct {
 type VentaUpdateInput struct {
 	Nota          string `json:"nota"`
 	Observaciones string `json:"observaciones"`
-	Estado        string `json:"estado"`
 }
 
 type VentaOutput struct {
@@ -27,7 +26,6 @@ type VentaOutput struct {
 	IGV               float64 `json:"igv"`
 	Total             float64 `json:"total"`
 	QRCode            string  `json:"qr_code"`
-	Estado            string  `json:"estado"`
 	CreatedAt         string  `json:"created_at"`
 	UpdatedAt         string  `json:"updated_at"`
 }

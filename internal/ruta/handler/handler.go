@@ -7,6 +7,7 @@ import (
 
 	"sistema_venta_pasajes/internal/ruta/input"
 	"sistema_venta_pasajes/internal/ruta/service"
+	"sistema_venta_pasajes/internal/ruta/util"
 	"sistema_venta_pasajes/pkg"
 
 	"github.com/gorilla/mux"
@@ -26,7 +27,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		pkg.WriteError(w, r, err)
 		return
 	}
-	pkg.WriteSuccess(w, http.StatusOK, "Rutas obtenidas correctamente", rutas, map[string]any{"count": len(rutas)})
+	pkg.WriteSuccess(w, http.StatusOK, util.MSG_ROUTE_LIST, rutas, map[string]any{"count": len(rutas)})
 }
 
 func (h *Handler) GetByID(w http.ResponseWriter, r *http.Request) {
@@ -34,7 +35,7 @@ func (h *Handler) GetByID(w http.ResponseWriter, r *http.Request) {
 	idStr := vars["id"]
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		pkg.WriteError(w, r, pkg.BadRequest("invalid_id", "ID inválido"))
+		pkg.WriteError(w, r, pkg.BadRequest(util.ERR_CODE_INVALID_ID, util.MSG_INVALID_ID))
 		return
 	}
 	ruta, err := h.service.GetByID(r.Context(), id)
@@ -42,7 +43,7 @@ func (h *Handler) GetByID(w http.ResponseWriter, r *http.Request) {
 		pkg.WriteError(w, r, err)
 		return
 	}
-	pkg.WriteSuccess(w, http.StatusOK, "Ruta obtenida correctamente", ruta, nil)
+	pkg.WriteSuccess(w, http.StatusOK, util.MSG_ROUTE_GET, ruta, nil)
 }
 
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +57,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		pkg.WriteError(w, r, err)
 		return
 	}
-	pkg.WriteSuccess(w, http.StatusCreated, "Ruta creada correctamente", ruta, nil)
+	pkg.WriteSuccess(w, http.StatusCreated, util.MSG_ROUTE_CREATED, ruta, nil)
 }
 
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
@@ -64,7 +65,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	idStr := vars["id"]
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		pkg.WriteError(w, r, pkg.BadRequest("invalid_id", "ID inválido"))
+		pkg.WriteError(w, r, pkg.BadRequest(util.ERR_CODE_INVALID_ID, util.MSG_INVALID_ID))
 		return
 	}
 	var in input.UpdateRutaInput
@@ -77,7 +78,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		pkg.WriteError(w, r, err)
 		return
 	}
-	pkg.WriteSuccess(w, http.StatusOK, "Ruta actualizada correctamente", ruta, nil)
+	pkg.WriteSuccess(w, http.StatusOK, util.MSG_ROUTE_UPDATED, ruta, nil)
 }
 
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
@@ -85,12 +86,12 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	idStr := vars["id"]
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		pkg.WriteError(w, r, pkg.BadRequest("invalid_id", "ID inválido"))
+		pkg.WriteError(w, r, pkg.BadRequest(util.ERR_CODE_INVALID_ID, util.MSG_INVALID_ID))
 		return
 	}
 	if err := h.service.Delete(r.Context(), id); err != nil {
 		pkg.WriteError(w, r, err)
 		return
 	}
-	pkg.WriteSuccess(w, http.StatusOK, "Ruta eliminada correctamente", nil, nil)
+	pkg.WriteSuccess(w, http.StatusOK, util.MSG_ROUTE_DELETED, nil, nil)
 }

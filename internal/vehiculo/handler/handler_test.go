@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sistema_venta_pasajes/internal/vehiculo/util"
 	"testing"
 
 	"github.com/gorilla/mux"
@@ -67,6 +68,6 @@ func TestVehiculoHandler_GetByID(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	var resp map[string]interface{}
 	json.Unmarshal(w.Body.Bytes(), &resp)
-	assert.Equal(t, "OK", resp["message"])
+	assert.Equal(t, util.MSG_GET, resp["message"])
 	assert.NotNil(t, resp["data"])
 }

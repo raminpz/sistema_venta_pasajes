@@ -16,7 +16,6 @@ type Venta struct {
 	Subtotal          float64   `gorm:"column:SUBTOTAL" json:"subtotal"`
 	IGV               float64   `gorm:"column:IGV" json:"igv"`
 	Total             float64   `gorm:"column:TOTAL" json:"total"`
-	Estado            string    `gorm:"column:ESTADO" json:"estado"`
 	CreatedAt         time.Time `gorm:"column:CREATED_AT" json:"created_at"`
 	UpdatedAt         time.Time `gorm:"column:UPDATED_AT" json:"updated_at"`
 }

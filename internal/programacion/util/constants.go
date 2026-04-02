@@ -1,0 +1,36 @@
+package util
+
+const (
+	MSG_PROGRAMACION_CREATED          = "Programacion creada correctamente"
+	MSG_PROGRAMACION_UPDATED          = "Programacion actualizada correctamente"
+	MSG_PROGRAMACION_DELETED          = "Programacion eliminada correctamente"
+	MSG_PROGRAMACION_LIST             = "Lista de programaciones"
+	MSG_PROGRAMACION_GET              = "Programacion obtenida correctamente"
+	MSG_PROGRAMACION_NOT_FOUND        = "Programacion no encontrada"
+	MSG_PROGRAMACION_CREATE_ERROR     = "Error al crear programacion"
+	MSG_PROGRAMACION_UPDATE_ERROR     = "Error al actualizar programacion"
+	MSG_PROGRAMACION_DELETE_ERROR     = "Error al eliminar programacion"
+	MSG_PROGRAMACION_LIST_ERROR       = "Error al listar programaciones"
+	MSG_PROGRAMACION_VALIDATION_ERROR = "Datos de programacion invalidos"
+	MSG_PROGRAMACION_INVALID_STATUS   = "Estado invalido. Use: PROGRAMADO, EN_CURSO, COMPLETADO o CANCELADO"
+	MSG_PROGRAMACION_INVALID_DATES    = "FECHA_LLEGADA debe ser mayor o igual que FECHA_SALIDA"
+	MSG_PROGRAMACION_INVALID_DATETIME = "Formato de fecha invalido. Use YYYY-MM-DD HH:MM:SS"
+	MSG_PROGRAMACION_REQUIRED_IDS     = "ID_RUTA, ID_VEHICULO e ID_CONDUCTOR son obligatorios"
+	MSG_PROGRAMACION_INVALID_ID       = "El id proporcionado no es valido"
+	MSG_PROGRAMACION_INVALID_PAGE     = "Parametros de paginacion invalidos"
+	MSG_PROGRAMACION_FK_CONFLICT      = "La ruta, vehiculo o conductor indicado no existe"
+
+	ERR_CODE_INVALID_BODY       = "invalid_body"
+	ERR_CODE_INVALID_ID         = "invalid_id"
+	ERR_CODE_CREATE             = "create_error"
+	ERR_CODE_UPDATE             = "update_error"
+	ERR_CODE_DELETE             = "delete_error"
+	ERR_CODE_LIST               = "list_error"
+	ERR_CODE_NOT_FOUND          = "not_found"
+	ERR_CODE_INVALID_PAGINATION = "invalid_pagination"
+
+	STATUS_PROGRAMADO = "PROGRAMADO"
+	STATUS_EN_CURSO   = "EN_CURSO"
+	STATUS_COMPLETADO = "COMPLETADO"
+	STATUS_CANCELADO  = "CANCELADO"
+)

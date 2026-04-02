@@ -16,7 +16,10 @@ import (
 	asientohandler "sistema_venta_pasajes/internal/asiento/handler"
 	conductorhandler "sistema_venta_pasajes/internal/conductor/handler"
 	empresahandler "sistema_venta_pasajes/internal/empresa/handler"
+	encomiendahandler "sistema_venta_pasajes/internal/encomienda/handler"
+	pagohandler "sistema_venta_pasajes/internal/pago/handler"
 	pasajerohandler "sistema_venta_pasajes/internal/pasajero/handler"
+	programacionhandler "sistema_venta_pasajes/internal/programacion/handler"
 	proveedorsistemahandler "sistema_venta_pasajes/internal/proveedor/handler"
 	rutahandler "sistema_venta_pasajes/internal/ruta/handler"
 	terminalhandler "sistema_venta_pasajes/internal/terminal/handler"
@@ -74,6 +77,15 @@ func NewRouter(db *gorm.DB) *mux.Router {
 
 	// Registro de rutas de usuario
 	usuariohandler.RegisterUsuarioHandlers(api, db)
+
+	// Registro de rutas de programacion
+	programacionhandler.RegisterRoutes(api, db)
+
+	// Registro de rutas de pago
+	pagohandler.RegisterRoutes(api, db)
+
+	// Registro de rutas de encomienda
+	encomiendahandler.RegisterRoutes(api, db)
 
 	// Registro de rutas de venta
 	ventahandler.RegisterRoutes(api, db)

@@ -100,28 +100,21 @@ func (h *PasajeroHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *PasajeroHandler) List(w http.ResponseWriter, r *http.Request) {
-	page := 1
-	size := 10
-	if p := r.URL.Query().Get("page"); p != "" {
-		if v, err := strconv.Atoi(p); err == nil && v > 0 {
-			page = v
-		}
+	page, size, err := pkg.ParsePaginationParams(r, 1, 15)
+	if err != nil {
+		pkg.WriteError(w, r, pkg.BadRequest("invalid_pagination", util.MSG_INVALID_PAGE).WithCause(err))
+		return
 	}
-	if s := r.URL.Query().Get("size"); s != "" {
-		if v, err := strconv.Atoi(s); err == nil && v > 0 {
-			size = v
-		}
+	out, meta, err := h.service.List(page, size)
+	if err != nil {
+		pkg.WriteError(w, r, pkg.Internal(util.MSG_LIST_ERROR).WithCause(err).WithDetails(err.Error()))
+		return
 	}
-	   out, meta, err := h.service.List(page, size)
-	   if err != nil {
-			   pkg.WriteError(w, r, pkg.Internal(util.MSG_LIST_ERROR).WithCause(err).WithDetails(err.Error()))
-			   return
-	   }
-	   // Si no hay resultados, devolver array vacío
-	   if out == nil || len(out) == 0 {
-			   out = []input.PasajeroOutput{}
-	   }
-	   pkg.WriteSuccess(w, http.StatusOK, util.MSG_LIST_SUCCESS, out, meta)
+	// Si no hay resultados, devolver array vacío
+	if out == nil || len(out) == 0 {
+		out = []input.PasajeroOutput{}
+	}
+	pkg.WriteSuccess(w, http.StatusOK, util.MSG_LIST_SUCCESS, out, meta)
 }
 
 func (h *PasajeroHandler) Search(w http.ResponseWriter, r *http.Request) {

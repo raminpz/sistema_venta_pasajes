@@ -1,0 +1,38 @@
+package util
+
+const (
+	MSG_PAGO_CREATED              = "Pago creado correctamente"
+	MSG_PAGO_UPDATED              = "Pago actualizado correctamente"
+	MSG_PAGO_DELETED              = "Pago eliminado correctamente"
+	MSG_PAGO_LIST                 = "Lista de pagos"
+	MSG_PAGO_GET                  = "Pago obtenido correctamente"
+	MSG_PAGO_NOT_FOUND            = "Pago no encontrado"
+	MSG_PAGO_CREATE_ERROR         = "Error al crear pago"
+	MSG_PAGO_UPDATE_ERROR         = "Error al actualizar pago"
+	MSG_PAGO_DELETE_ERROR         = "Error al eliminar pago"
+	MSG_PAGO_LIST_ERROR           = "Error al listar pagos"
+	MSG_PAGO_INVALID_ID           = "El id proporcionado no es valido"
+	MSG_PAGO_REQUIRED_FIELDS      = "Existen campos obligatorios faltantes o inválidos"
+	MSG_PAGO_INVALID_MONTO        = "El monto no puede ser negativo"
+	MSG_PAGO_INVALID_STATUS       = "Estado invalido. Use: REGISTRADA, PARCIAL, PAGADA o ANULADA"
+	MSG_PAGO_INVALID_PAGE         = "Parametros de paginacion invalidos"
+	MSG_PAGO_VALIDATION           = "Existen errores de validación"
+	MSG_PAGO_FOREIGN_KEY_CONFLICT = "No se pudo completar la operacion por restriccion de integridad referencial"
+	MSG_PAGO_VENTA_NOT_FOUND      = "El id_venta indicado no existe"
+	MSG_PAGO_METODO_NOT_FOUND     = "El id_metodo indicado no existe"
+	MSG_PAGO_ENUM_DB_ERROR        = "No fue posible registrar el pago porque el valor de ESTADO no es compatible con la configuracion actual de la base de datos"
+
+	ERR_CODE_INVALID_BODY       = "invalid_body"
+	ERR_CODE_INVALID_ID         = "invalid_id"
+	ERR_CODE_CREATE             = "create_error"
+	ERR_CODE_UPDATE             = "update_error"
+	ERR_CODE_DELETE             = "delete_error"
+	ERR_CODE_LIST               = "list_error"
+	ERR_CODE_NOT_FOUND          = "not_found"
+	ERR_CODE_INVALID_PAGINATION = "invalid_pagination"
+
+	STATUS_REGISTRADA = "REGISTRADA"
+	STATUS_PARCIAL    = "PARCIAL"
+	STATUS_PAGADA     = "PAGADA"
+	STATUS_ANULADA    = "ANULADA"
+)

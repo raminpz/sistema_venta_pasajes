@@ -5,6 +5,7 @@ import (
 	"sistema_venta_pasajes/internal/ruta/domain"
 	"sistema_venta_pasajes/internal/ruta/input"
 	"sistema_venta_pasajes/internal/ruta/repository"
+	"sistema_venta_pasajes/internal/ruta/util"
 	"sistema_venta_pasajes/pkg"
 )
 
@@ -41,9 +42,9 @@ func (s *service) Create(ctx context.Context, in input.CreateRutaInput) (*domain
 	if err := s.repo.Create(ruta); err != nil {
 		errApp := pkg.AsAppError(err)
 		if errApp != nil && errApp.Code == "duplicate_resource" {
-			return nil, pkg.Conflict("duplicate_resource", "Ya existe una ruta con los mismos terminales de origen y destino.")
+			return nil, pkg.Conflict("duplicate_resource", util.MSG_ROUTE_DUPLICATE)
 		}
-		return nil, pkg.Internal("Error al crear ruta", err)
+		return nil, pkg.Internal(util.MSG_ROUTE_CREATE_ERROR, err)
 	}
 	return ruta, nil
 }

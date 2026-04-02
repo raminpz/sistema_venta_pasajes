@@ -12,5 +12,9 @@ func RegisterRutaRoutes(r *mux.Router, db *gorm.DB) {
 	repo := repository.NewRutaRepository(db)
 	svc := service.New(repo)
 	h := New(svc)
-	RegisterRoutes(r, h)
+	r.HandleFunc("/ruta", h.List).Methods("GET")
+	r.HandleFunc("/ruta/{id}", h.GetByID).Methods("GET")
+	r.HandleFunc("/ruta", h.Create).Methods("POST")
+	r.HandleFunc("/ruta/{id}", h.Update).Methods("PUT")
+	r.HandleFunc("/ruta/{id}", h.Delete).Methods("DELETE")
 }

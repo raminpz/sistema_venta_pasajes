@@ -132,12 +132,12 @@ func TestVentaService_Create_TipoComprobanteInvalido(t *testing.T) {
 	s := &VentaServiceImpl{repo: &fakeRepo{}}
 	in := input.VentaCreateInput{
 		IDUsuario:         1,
-		IDTipoComprobante: 99, // inválido
+		IDTipoComprobante: 99, // invalido
 		Subtotal:          100,
 	}
 	_, err := s.Create(in)
 	if err == nil {
-		t.Error("debe fallar por tipo de comprobante inválido")
+		t.Error("debe fallar por tipo de comprobante invalido")
 	}
 }
 
@@ -145,7 +145,7 @@ func TestVentaService_Create_SubtotalCero(t *testing.T) {
 	s := &VentaServiceImpl{repo: &fakeRepo{}}
 	_, err := s.Create(input.VentaCreateInput{IDUsuario: 1, IDTipoComprobante: 1, Subtotal: 0})
 	if err == nil {
-		t.Error("debe fallar por subtotal inválido")
+		t.Error("debe fallar por subtotal invalido")
 	}
 }
 
@@ -180,11 +180,11 @@ func TestVentaService_Create_ErrorRepo(t *testing.T) {
 func TestVentaService_Update_OK(t *testing.T) {
 	venta := domain.Venta{IDVenta: 1, Nota: "old"}
 	s := &VentaServiceImpl{repo: &fakeRepo{venta: venta}}
-	out, err := s.Update(1, input.VentaUpdateInput{Nota: "nueva", Observaciones: "obs", Estado: "ACTIVO"})
+	out, err := s.Update(1, input.VentaUpdateInput{Nota: "nueva", Observaciones: "obs"})
 	if err != nil {
 		t.Fatalf("no se esperaba error: %v", err)
 	}
-	if out.Nota != "nueva" || out.Observaciones != "obs" || out.Estado != "ACTIVO" {
+	if out.Nota != "nueva" || out.Observaciones != "obs" {
 		t.Error("no se actualizaron los campos correctamente")
 	}
 }
@@ -304,7 +304,7 @@ func TestToVentaOutput_NumeroComprobante(t *testing.T) {
 		{"B001", 123, "B001-000123"},
 		{"F001", 1, "F001-000001"},
 		{"F001", 9999, "F001-009999"},
-		{"T001", 1000000, "T001-1000000"}, // correlativo grande → sin truncar
+		{"T001", 1000000, "T001-1000000"}, // correlativo grande -> sin truncar
 	}
 	for _, c := range casos {
 		v := &domain.Venta{Serie: c.serie, Correlativo: c.correlativo}
@@ -313,7 +313,6 @@ func TestToVentaOutput_NumeroComprobante(t *testing.T) {
 			t.Errorf("serie=%s correlativo=%d: esperado %s, obtenido %s",
 				c.serie, c.correlativo, c.esperado, out.NumeroComprobante)
 		}
-		// Verificar que serie y correlativo se mapean igual
 		if out.Serie != c.serie {
 			t.Errorf("serie no mapeada correctamente: %s != %s", out.Serie, c.serie)
 		}

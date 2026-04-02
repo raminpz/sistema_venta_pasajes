@@ -1,10 +1,9 @@
 package util
 
 import (
-	"errors"
 	"net/http"
 	"regexp"
-	"strconv"
+	"sistema_venta_pasajes/pkg"
 	"strings"
 )
 
@@ -25,21 +24,5 @@ func ValidarCamposObligatorios(nombre, apellidos, email, password, telefono stri
 
 // ParsePaginationParams extrae y valida los parámetros de paginación desde la request
 func ParsePaginationParams(r *http.Request) (int, int, error) {
-	page := 1
-	size := 15
-	if p := r.URL.Query().Get("page"); p != "" {
-		v, err := strconv.Atoi(p)
-		if err != nil || v < 1 {
-			return 0, 0, errors.New("Parámetro 'page' inválido")
-		}
-		page = v
-	}
-	if s := r.URL.Query().Get("size"); s != "" {
-		v, err := strconv.Atoi(s)
-		if err != nil || v < 1 {
-			return 0, 0, errors.New("Parámetro 'size' inválido")
-		}
-		size = v
-	}
-	return page, size, nil
+	return pkg.ParsePaginationParams(r, 1, 15)
 }

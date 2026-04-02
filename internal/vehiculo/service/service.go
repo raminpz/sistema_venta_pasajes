@@ -28,7 +28,7 @@ func NewVehiculoService(repo repository.VehiculoRepository) VehiculoService {
 
 func (s *vehiculoService) Create(in input.CreateVehiculoInput) (*input.VehiculoOutput, error) {
 	if !util.ValidarPlaca(in.NroPlaca) {
-		return nil, pkg.BadRequest("invalid_plate", util.ErrInvalidID)
+		return nil, pkg.BadRequest("invalid_plate", util.ERR_INVALID_ID)
 	}
 	in.NroPlaca = strings.ToUpper(in.NroPlaca)
 	in.Marca = pkg.CapitalizeWords(in.Marca)
@@ -64,7 +64,7 @@ func (s *vehiculoService) Create(in input.CreateVehiculoInput) (*input.VehiculoO
 		return nil, pkg.Internal(err.Error())
 	}
 	if existsPlaca {
-		return nil, pkg.BadRequest("duplicate_placa", util.ErrDuplicatePlaca)
+		return nil, pkg.BadRequest("duplicate_placa", util.ERR_DUPLICATE_PLATE)
 	}
 
 	existsChasis, err := s.repo.ExistsByChasis(in.NumeroChasis)
@@ -72,7 +72,7 @@ func (s *vehiculoService) Create(in input.CreateVehiculoInput) (*input.VehiculoO
 		return nil, pkg.Internal(err.Error())
 	}
 	if existsChasis {
-		return nil, pkg.BadRequest("duplicate_chasis", util.ErrDuplicateChasis)
+		return nil, pkg.BadRequest("duplicate_chasis", util.ERR_DUPLICATE_CHASSIS)
 	}
 
 	existsSoat, err := s.repo.ExistsBySoat(in.NroSoat)
@@ -80,7 +80,7 @@ func (s *vehiculoService) Create(in input.CreateVehiculoInput) (*input.VehiculoO
 		return nil, pkg.Internal(err.Error())
 	}
 	if existsSoat {
-		return nil, pkg.BadRequest("duplicate_soat", util.ErrDuplicateSoat)
+		return nil, pkg.BadRequest("duplicate_soat", util.ERR_DUPLICATE_SOAT)
 	}
 
 	err = s.repo.Create(vehiculo)
@@ -93,7 +93,7 @@ func (s *vehiculoService) Create(in input.CreateVehiculoInput) (*input.VehiculoO
 func (s *vehiculoService) Update(in input.UpdateVehiculoInput) (*input.VehiculoOutput, error) {
 	vehiculo, err := s.repo.GetByID(in.IDVehiculo)
 	if err != nil {
-		return nil, pkg.NotFound("vehiculo_not_found", util.ErrNotFound)
+		return nil, pkg.NotFound("vehiculo_not_found", util.ERR_NOT_FOUND)
 	}
 	in.NroPlaca = strings.ToUpper(in.NroPlaca)
 	in.Marca = pkg.CapitalizeWords(in.Marca)
@@ -135,7 +135,7 @@ func (s *vehiculoService) Delete(id int64) error {
 func (s *vehiculoService) GetByID(id int64) (*input.VehiculoOutput, error) {
 	vehiculo, err := s.repo.GetByID(id)
 	if err != nil {
-		return nil, pkg.NotFound("vehiculo_not_found", util.ErrNotFound)
+		return nil, pkg.NotFound("vehiculo_not_found", util.ERR_NOT_FOUND)
 	}
 	return mapVehiculoOutput(vehiculo), nil
 }

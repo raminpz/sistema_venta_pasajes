@@ -4,6 +4,7 @@ import (
 	"sistema_venta_pasajes/internal/terminal/domain"
 	input "sistema_venta_pasajes/internal/terminal/input"
 	"sistema_venta_pasajes/internal/terminal/repository"
+	"sistema_venta_pasajes/internal/terminal/util"
 	"sistema_venta_pasajes/pkg"
 )
 
@@ -39,9 +40,9 @@ func (s *terminalService) Create(in input.CreateTerminalInput) (*domain.Terminal
 	if err != nil {
 		errApp := pkg.AsAppError(err)
 		if errApp != nil && errApp.Code == "duplicate_resource" {
-			return nil, pkg.Conflict("duplicate_resource", "Ya existe un terminal con el mismo nombre o dirección.")
+			return nil, pkg.Conflict(util.ERR_CODE_DUPLICATE_RESOURCE, util.MSG_TERMINAL_DUPLICATE)
 		}
-		return nil, pkg.Internal("Error al crear terminal", err)
+		return nil, pkg.Internal(util.MSG_TERMINAL_CREATE_ERROR, err)
 	}
 	return terminal, nil
 }
@@ -87,7 +88,7 @@ func validateTerminalInput(in input.CreateTerminalInput) error {
 		details["estado"] = "El estado es obligatorio"
 	}
 	if len(details) > 0 {
-		return pkg.Validation("Existen errores de validación", details)
+		return pkg.Validation(util.MSG_TERMINAL_VALIDATION, details)
 	}
 	return nil
 }
@@ -108,7 +109,7 @@ func validateTerminalUpdateInput(in input.UpdateTerminalInput) error {
 		details["direccion"] = "La dirección no puede exceder 200 caracteres"
 	}
 	if len(details) > 0 {
-		return pkg.Validation("Existen errores de validación", details)
+		return pkg.Validation(util.MSG_TERMINAL_VALIDATION, details)
 	}
 	return nil
 }

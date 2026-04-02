@@ -1,14 +1,23 @@
 # Sistema de Venta de Pasajes - API REST
 
+## 📚 Documentación Importante
+**PRIMERO lee estos documentos:**
+- ✅ [`STANDARDS.md`](./STANDARDS.md) - Guía de estándares (Mux + GORM)
+- ✅ [`QUICK_REFERENCE.md`](./QUICK_REFERENCE.md) - Referencia rápida para nuevo módulo
+- ✅ [`STANDARDS_SUMMARY.md`](./STANDARDS_SUMMARY.md) - Resumen ejecutivo
+- ✅ [`API_ROUTES.md`](./API_ROUTES.md) - Documentación de todas las rutas
+- ✅ [`VALIDATION_CHECKLIST.md`](./VALIDATION_CHECKLIST.md) - Estado de módulos
+
 ## Checklist de lectura
 - [x] Arquitectura actual del proyecto
 - [x] Estructura de carpetas por características
-- [x] Tecnologías base
+- [x] Tecnologías base (Go, Gorilla Mux, GORM, MySQL)
 - [x] Flujo de arranque de la aplicación
 - [x] Manejo centralizado de errores
-- [x] Feature implementada actualmente
+- [x] Features implementadas (13 módulos)
 - [x] Convenciones para siguientes módulos
 - [x] Comandos de ejecución y prueba
+- [x] **NUEVO**: Estándares Mux y GORM para todos los módulos
 
 ## Resumen
 Este proyecto implementa un **API REST en Go** para un **sistema de venta de pasajes terrestres**.
@@ -21,10 +30,11 @@ Ahora el proyecto usa una **estructura basada en características**:
 - la infraestructura compartida queda fuera de la feature
 
 ## Stack actual
-- **Go**
-- **Gorilla Mux**
-- **GORM**
-- **MySQL 8**
+- **Go** 1.25.0
+- **Gorilla Mux** v1.8.1 (Router HTTP)
+- **GORM** v1.31.1 (ORM)
+- **MySQL 8** (Base de datos)
+- **Gorilla Handlers** v1.5.2 (CORS)
 
 ---
 
@@ -149,44 +159,37 @@ internal/
 
 ---
 
-## 5. Feature implementada actualmente: `PROVEEDOR_SISTEMA`
-La primera feature ya implementada es `PROVEEDOR_SISTEMA`.
+## 5. Módulos Implementados (13 módulos)
 
-### Estructura
-```text
-internal/proveedor_sistema/
-├── domain/
-│   └── proveedor_sistema.go
-├── input/
-│   └── input.go
-├── handler/
-│   ├── handler.go
-│   ├── handler_test.go
-│   └── routes.go
-├── repository/
-│   └── repository.go
-├── service/
-│   ├── service.go
-│   └── service_test.go
+### ✅ Todos con Mux + GORM
+
+| Módulo | Funcionalidad | Status |
+|--------|---------------|--------|
+| **Asiento** | Gestión de asientos de vehículos | ✅ Listo |
+| **Conductor** | Gestión de conductores | ✅ Listo |
+| **Empresa** | Gestión de empresas de transporte | ✅ Listo |
+| **Licencia** | Licencias del sistema | ✅ Listo |
+| **Pago** | Gestión de pagos | ✅ Listo |
+| **Pasajero** | Gestión de pasajeros | ✅ Listo |
+| **Programación** | Programaciones de viajes | ✅ Listo |
+| **Proveedor** | Gestión de proveedores | ✅ Listo |
+| **Ruta** | Gestión de rutas | ✅ Listo |
+| **Terminal** | Gestión de terminales | ✅ Listo |
+| **Usuario** | Gestión de usuarios | ✅ Listo |
+| **Vehiculo** | Gestión de vehículos | ✅ Listo |
+| **Venta** | Gestión de ventas | ✅ Listo |
+
+### Endpoints RESTful
+Cada módulo implementa:
+```
+POST   /api/v1/{modulo}           - Crear
+GET    /api/v1/{modulo}           - Listar (con paginación)
+GET    /api/v1/{modulo}/{id}      - Obtener por ID
+PUT    /api/v1/{modulo}/{id}      - Actualizar
+DELETE /api/v1/{modulo}/{id}      - Eliminar
 ```
 
-### Endpoints disponibles
-Bajo `/api/v1`:
-- `GET /api/v1/proveedor`
-- `GET /api/v1/proveedor/{id}`
-- `POST /api/v1/proveedor`
-- `PUT /api/v1/proveedor/{id}`
-- `DELETE /api/v1/proveedor/{id}`
-
-> `DELETE` realiza borrado lógico usando `DELETED_AT`; el registro no se elimina físicamente de la base de datos.
-
-### Validaciones implementadas
-- RUC obligatorio y de 11 dígitos
-- razón social obligatoria
-- validación de longitudes máximas
-- email válido si se envía
-- web válida si se envía
-- ID válido en operaciones por identificador
+**Ver documentación completa en** [`API_ROUTES.md`](./API_ROUTES.md)
 
 ---
 
@@ -233,59 +236,104 @@ El proyecto ya tiene un manejo centralizado y personalizado de errores.
 
 ---
 
-## 8. Convenciones para los siguientes módulos
-A partir de ahora, cada nueva tabla o feature debe implementarse siguiendo esta regla:
+## 6. Convenciones para todos los módulos - Mux y GORM
 
-### Orden por feature
-1. crear carpeta `internal/<feature>`
-2. crear `<feature>.go`
-3. crear `repository/repository.go`
-4. crear `service/service.go`
-5. crear `handler/handler.go`
-6. crear `handler/routes.go`
-7. agregar tests mínimos de `service` y `handler`
-8. registrar la feature desde `internal/http/routes/router.go`
+### ⚠️ IMPORTANTE: Estándares Obligatorios
 
-### Reglas técnicas
-- usar **GORM** en repository
-- usar `context.Context`
-- usar errores centralizados
-- usar respuestas JSON estandarizadas
-- usar `.Methods("GET")`, `.Methods("POST")`, `.Methods("PUT")`, etc.
-- respetar el esquema MySQL ya existente
-- no agregar operaciones no definidas funcionalmente para la feature
+**TODOS los módulos DEBEN usar:**
+- ✅ **Gorilla Mux** (`github.com/gorilla/mux`) para enrutamiento HTTP
+- ✅ **GORM** (`gorm.io/gorm`) para persistencia de datos
+
+### Estructura estándar de módulo
+```text
+internal/nombre_modulo/
+├── domain/
+│   └── entity.go                    # Modelo con GORM tags
+├── repository/
+│   └── repository.go                # Interfaz + implementación GORM
+├── service/
+│   └── service.go                   # Lógica de negocio
+├── handler/
+│   ├── handler.go                   # Handlers HTTP con Mux
+│   └── register.go                  # Registro de rutas
+├── input/
+│   └── input.go                     # DTOs
+└── util/
+    ├── constants.go
+    └── validation.go
+```
+
+### Handler (SIEMPRE con firma de Mux)
+```go
+func (h *YourHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]  // ✓ Usar mux.Vars
+	// lógica...
+}
+```
+
+### Repository (SIEMPRE con GORM)
+```go
+func (r *repo) Create(entity *domain.Entity) error {
+	return r.db.Create(entity).Error  // ✓ Usar r.db (GORM)
+}
+```
+
+### Registro de rutas (SIEMPRE con RegisterRoutes)
+```go
+func RegisterRoutes(r *mux.Router, db *gorm.DB) {
+	repo := repository.NewRepository(db)
+	svc := service.NewService(repo)
+	h := NewHandler(svc)
+	r.HandleFunc("/modulo", h.Create).Methods("POST")
+	// ... más rutas
+}
+```
+
+### ✅ Validación
+- [ ] ¿Usa `github.com/gorilla/mux`?
+- [ ] ¿Tiene `RegisterRoutes(r *mux.Router, db *gorm.DB)`?
+- [ ] ¿Repository usa GORM (`*gorm.DB`)?
+- [ ] ¿Las queries usan placeholders (`WHERE "id = ?", value`)?
+- [ ] ¿NO tiene concatenación de strings en queries?
+
+**Si respondiste SÍ a todo → ✅ CUMPLE ESTÁNDARES**
+
+### 📖 Referencia Rápida para Nuevo Módulo
+Ver [`QUICK_REFERENCE.md`](./QUICK_REFERENCE.md)
 
 ---
 
-## 9. Orden de desarrollo recomendado según el esquema
+## 8. Orden de desarrollo recomendado según el esquema
 ### Tablas independientes
-1. `PROVEEDOR_SISTEMA`
-2. `EMPRESA`
-3. `TERMINAL`
-4. `TIPO_VEHICULO`
-5. `ROL`
-6. `PASAJERO`
-7. `TIPO_COMPROBANTE`
-8. `METODO_PAGO`
+1. ✅ `PROVEEDOR_SISTEMA` - Implementado
+2. ✅ `EMPRESA` - Implementado
+3. ✅ `TERMINAL` - Implementado
+4. `TIPO_VEHICULO` - Por hacer
+5. `ROL` - Por hacer
+6. ✅ `PASAJERO` - Implementado
+7. `TIPO_COMPROBANTE` - Por hacer
+8. `METODO_PAGO` - Por hacer
 
 ### Tablas con dependencias simples
-9. `LICENCIA_SISTEMA`
-10. `RUTA`
-11. `VEHICULO`
-12. `ASIENTO`
-13. `CONDUCTOR`
-14. `USUARIO`
+9. ✅ `LICENCIA_SISTEMA` - Implementado
+10. ✅ `RUTA` - Implementado
+11. ✅ `VEHICULO` - Implementado
+12. ✅ `ASIENTO` - Implementado
+13. ✅ `CONDUCTOR` - Implementado
+14. ✅ `USUARIO` - Implementado
 
 ### Tablas transaccionales
-15. `VIAJE`
-16. `VENTA`
-17. `PAGO`
-18. `DETALLE_PASAJE`
-19. `ENCOMIENDA`
+15. `VIAJE` - Por hacer (puede estar como PROGRAMACION)
+16. ✅ `VENTA` - Implementado
+17. ✅ `PAGO` - Implementado
+18. `DETALLE_PASAJE` - Por hacer
+19. `ENCOMIENDA` - Por hacer
+
+**Status Actual**: 13/19 módulos implementados (68%)
 
 ---
 
-## 10. Variables de entorno sugeridas
+## 9. Variables de entorno sugeridas
 ```env
 APP_PORT=8080
 APP_ENV=development
@@ -306,7 +354,7 @@ HTTP_WRITE_TIMEOUT=10
 
 ---
 
-## 11. Comandos útiles
+## 10. Comandos útiles
 ### Ejecutar tests
 ```powershell
 Set-Location "C:\Users\Rami\GolandProjects\sistema_venta_pasajes"

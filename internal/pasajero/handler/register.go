@@ -12,11 +12,6 @@ func RegisterRoutes(r *mux.Router, db *gorm.DB) {
 	repo := repository.NewPasajeroRepository(db)
 	svc := service.NewPasajeroService(repo)
 	h := NewPasajeroHandler(svc)
-	registerRoutesWithHandler(r, h)
-}
-
-// registerRoutesWithHandler permite registrar rutas con un handler ya creado (para tests)
-func registerRoutesWithHandler(r *mux.Router, h *PasajeroHandler) {
 	r.HandleFunc("/pasajero", h.Create).Methods("POST")
 	r.HandleFunc("/pasajeros", h.List).Methods("GET")
 	r.HandleFunc("/pasajero/{id}", h.GetByID).Methods("GET")

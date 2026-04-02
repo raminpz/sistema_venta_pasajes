@@ -3,6 +3,7 @@ package handler
 import (
 	"sistema_venta_pasajes/internal/terminal/repository"
 	"sistema_venta_pasajes/internal/terminal/service"
+
 	"github.com/gorilla/mux"
 	"gorm.io/gorm"
 )
@@ -11,11 +12,6 @@ func RegisterRoutes(r *mux.Router, db *gorm.DB) {
 	repo := repository.NewTerminalRepository(db)
 	svc := service.NewTerminalService(repo)
 	h := NewTerminalHandler(svc)
-	registerRoutesWithHandler(r, h)
-}
-
-// registerRoutesWithHandler permite registrar rutas con un handler ya creado (para tests)
-func registerRoutesWithHandler(r *mux.Router, h *TerminalHandler) {
 	r.HandleFunc("/terminal", h.Create).Methods("POST")
 	r.HandleFunc("/terminal", h.List).Methods("GET")
 	r.HandleFunc("/terminal/{id}", h.GetByID).Methods("GET")

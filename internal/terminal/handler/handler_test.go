@@ -44,7 +44,11 @@ func TestCreateTerminalHandler(t *testing.T) {
 	ms := new(mockService)
 	h := NewTerminalHandler(ms)
 	r := mux.NewRouter()
-	registerRoutesWithHandler(r, h)
+	r.HandleFunc("/terminal", h.Create).Methods("POST")
+	r.HandleFunc("/terminal", h.List).Methods("GET")
+	r.HandleFunc("/terminal/{id}", h.GetByID).Methods("GET")
+	r.HandleFunc("/terminal/{id}", h.Update).Methods("PUT")
+	r.HandleFunc("/terminal/{id}", h.Delete).Methods("DELETE")
 	terminalInput := input.CreateTerminalInput{
 		Nombre:       "Terminal Test",
 		Ciudad:       "Ciudad Test",

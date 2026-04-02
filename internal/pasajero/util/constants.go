@@ -27,4 +27,5 @@ const (
 	MSG_SEARCH_ERROR   = "Error al buscar pasajeros"
 	MSG_DUPLICATE_DNI  = "El DNI ingresado ya fue registrado."
 	MSG_SEARCH_SUCCESS = "Búsqueda de pasajeros exitosa"
+	MSG_INVALID_PAGE   = "Parámetros de paginación inválidos"
 )

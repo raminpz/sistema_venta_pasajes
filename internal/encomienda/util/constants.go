@@ -1,0 +1,36 @@
+package util
+
+const (
+	MSG_ENCOMIENDA_CREATED           = "Encomienda creada correctamente"
+	MSG_ENCOMIENDA_UPDATED           = "Encomienda actualizada correctamente"
+	MSG_ENCOMIENDA_DELETED           = "Encomienda eliminada correctamente"
+	MSG_ENCOMIENDA_GET               = "Encomienda obtenida correctamente"
+	MSG_ENCOMIENDA_LIST              = "Lista de encomiendas"
+	MSG_ENCOMIENDA_NOT_FOUND         = "Encomienda no encontrada"
+	MSG_ENCOMIENDA_INVALID_ID        = "El id proporcionado no es valido"
+	MSG_ENCOMIENDA_REQUIRED_FIELDS   = "Existen campos obligatorios faltantes o inválidos"
+	MSG_ENCOMIENDA_INVALID_COSTO     = "El costo debe ser mayor a 0"
+	MSG_ENCOMIENDA_INVALID_PESO      = "El peso debe ser mayor a 0"
+	MSG_ENCOMIENDA_INVALID_ESTADO    = "Estado invalido. Use: PENDIENTE, ENTREGADO o DEVUELTO"
+	MSG_ENCOMIENDA_INVALID_PAGE      = "Parametros de paginacion invalidos"
+	MSG_ENCOMIENDA_VALIDATION        = "Existen errores de validación"
+	MSG_ENCOMIENDA_CREATE_ERROR      = "Error al crear encomienda"
+	MSG_ENCOMIENDA_UPDATE_ERROR      = "Error al actualizar encomienda"
+	MSG_ENCOMIENDA_DELETE_ERROR      = "Error al eliminar encomienda"
+	MSG_ENCOMIENDA_LIST_ERROR        = "Error al listar encomiendas"
+	MSG_ENCOMIENDA_VENTA_NOT_FOUND   = "El id_venta indicado no existe"
+	MSG_ENCOMIENDA_PROG_NOT_FOUND    = "El id_programacion indicado no existe"
+	MSG_ENCOMIENDA_FOREIGN_KEY_ERROR = "No se pudo completar la operacion por restriccion de integridad referencial"
+
+	ERR_CODE_INVALID_ID         = "invalid_id"
+	ERR_CODE_INVALID_PAGINATION = "invalid_pagination"
+	ERR_CODE_NOT_FOUND          = "not_found"
+	ERR_CODE_CREATE             = "create_error"
+	ERR_CODE_UPDATE             = "update_error"
+	ERR_CODE_DELETE             = "delete_error"
+	ERR_CODE_LIST               = "list_error"
+
+	STATUS_PENDIENTE = "PENDIENTE"
+	STATUS_ENTREGADO = "ENTREGADO"
+	STATUS_DEVUELTO  = "DEVUELTO"
+)

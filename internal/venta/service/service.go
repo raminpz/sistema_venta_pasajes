@@ -42,7 +42,6 @@ func toVentaOutput(v *domain.Venta) *input.VentaOutput {
 		IGV:               v.IGV,
 		Total:             v.Total,
 		QRCode:            v.QRCode,
-		Estado:            v.Estado,
 		CreatedAt:         v.CreatedAt.Format(layoutDateTime),
 		UpdatedAt:         v.UpdatedAt.Format(layoutDateTime),
 	}
@@ -51,12 +50,12 @@ func toVentaOutput(v *domain.Venta) *input.VentaOutput {
 func (s *VentaServiceImpl) Create(in input.VentaCreateInput) (*input.VentaOutput, error) {
 	if !util.ValidarVentaInput(in.IDUsuario, in.IDTipoComprobante, in.Subtotal) {
 		if in.IDUsuario <= 0 {
-			return nil, errors.New(util.MsgVentaUsuarioRequerido)
+			return nil, errors.New(util.MSG_VENTA_USUARIO_REQUIRED)
 		}
 		if in.IDTipoComprobante <= 0 {
-			return nil, errors.New(util.MsgVentaComprobanteRequerido)
+			return nil, errors.New(util.MSG_VENTA_COMPROBANTE_REQUIRED)
 		}
-		return nil, errors.New(util.MsgVentaSubtotalRequerido)
+		return nil, errors.New(util.MSG_VENTA_SUBTOTAL_REQUIRED)
 	}
 
 	serie, err := util.SerieFromTipoComprobante(in.IDTipoComprobante)
@@ -66,7 +65,7 @@ func (s *VentaServiceImpl) Create(in input.VentaCreateInput) (*input.VentaOutput
 
 	correlativo, err := s.repo.NextCorrelativo(serie)
 	if err != nil {
-		return nil, errors.New(util.MsgVentaErrorCorrelativo)
+		return nil, errors.New(util.MSG_VENTA_CORRELATIVO_ERROR)
 	}
 
 	var igv, total float64
@@ -82,7 +81,7 @@ func (s *VentaServiceImpl) Create(in input.VentaCreateInput) (*input.VentaOutput
 	qrData := fmt.Sprintf("VENTA|%s-%06d|SUBTOTAL:%.2f|TOTAL:%.2f", serie, correlativo, in.Subtotal, total)
 	qr, errQR := pkg.GenerateQRCode(qrData, 256)
 	if errQR != nil {
-		return nil, errors.New(util.MsgVentaErrorQR)
+		return nil, errors.New(util.MSG_VENTA_QR_ERROR)
 	}
 
 	venta := &domain.Venta{
@@ -96,7 +95,6 @@ func (s *VentaServiceImpl) Create(in input.VentaCreateInput) (*input.VentaOutput
 		IGV:               igv,
 		Total:             total,
 		QRCode:            qr,
-		Estado:            util.VentaEstadoRegistrada,
 	}
 	pkg.TrimSpacesOnStruct(venta)
 
@@ -109,11 +107,10 @@ func (s *VentaServiceImpl) Create(in input.VentaCreateInput) (*input.VentaOutput
 func (s *VentaServiceImpl) Update(id int64, in input.VentaUpdateInput) (*input.VentaOutput, error) {
 	venta, err := s.repo.GetByID(id)
 	if err != nil {
-		return nil, errors.New(util.MsgVentaNoEncontrada)
+		return nil, errors.New(util.MSG_VENTA_NOT_FOUND)
 	}
 	venta.Nota = in.Nota
 	venta.Observaciones = in.Observaciones
-	venta.Estado = in.Estado
 	pkg.TrimSpacesOnStruct(venta)
 
 	if err := s.repo.Update(venta); err != nil {
@@ -129,7 +126,7 @@ func (s *VentaServiceImpl) Delete(id int64) error {
 func (s *VentaServiceImpl) GetByID(id int64) (*input.VentaOutput, error) {
 	venta, err := s.repo.GetByID(id)
 	if err != nil {
-		return nil, errors.New(util.MsgVentaNoEncontrada)
+		return nil, errors.New(util.MSG_VENTA_NOT_FOUND)
 	}
 	return toVentaOutput(venta), nil
 }

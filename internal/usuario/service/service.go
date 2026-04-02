@@ -31,23 +31,23 @@ func NewUsuarioService(repo repository.UsuarioRepository) UsuarioService {
 func (s *usuarioService) Create(in input.UsuarioCreateInput) (*input.UsuarioOutput, error) {
 	ctx := context.Background()
 	if !util.ValidarCamposObligatorios(in.Nombre, in.Apellidos, in.Email, in.Password, in.Telefono) {
-		return nil, errors.New(util.MsgDatosInvalidos)
+		return nil, errors.New(util.MSG_INVALID_DATA)
 	}
 	if !util.ValidarEmail(in.Email) {
-		return nil, errors.New(util.MsgDatosInvalidos)
+		return nil, errors.New(util.MSG_INVALID_DATA)
 	}
 	if !util.ValidarDNI(in.DNI) {
-		return nil, errors.New(util.MsgDatosInvalidos)
+		return nil, errors.New(util.MSG_INVALID_DATA)
 	}
 	// Validar unicidad de EMAIL
 	existingEmail, _ := s.repo.GetByEmail(ctx, in.Email)
 	if existingEmail != nil {
-		return nil, errors.New(util.MsgUsuarioDuplicado)
+		return nil, errors.New(util.MSG_EMAIL_DUPLICATE)
 	}
 	// Validar unicidad de DNI
 	existingDNI, _ := s.repo.GetByDNI(ctx, in.DNI)
 	if existingDNI != nil {
-		return nil, errors.New(util.MsgDNIDuplicado)
+		return nil, errors.New(util.MSG_DNI_DUPLICATE)
 	}
 	hashed, err := bcrypt.GenerateFromPassword([]byte(in.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -77,12 +77,12 @@ func (s *usuarioService) Update(id int, in input.UsuarioUpdateInput) (*input.Usu
 	ctx := context.Background()
 	usuario, err := s.repo.GetByID(ctx, id)
 	if err != nil || usuario == nil {
-		return nil, errors.New(util.MsgUsuarioNoEncontrado)
+		return nil, errors.New(util.MSG_USER_NOT_FOUND)
 	}
 	if in.Email != usuario.Email {
 		existingEmail, _ := s.repo.GetByEmail(ctx, in.Email)
 		if existingEmail != nil && existingEmail.IDUsuario != usuario.IDUsuario {
-			return nil, errors.New(util.MsgUsuarioDuplicado)
+			return nil, errors.New(util.MSG_EMAIL_DUPLICATE)
 		}
 	}
 	usuario.Nombre = in.Nombre
@@ -119,7 +119,7 @@ func (s *usuarioService) GetByID(id int) (*input.UsuarioOutput, error) {
 	ctx := context.Background()
 	usuario, err := s.repo.GetByID(ctx, id)
 	if err != nil || usuario == nil {
-		return nil, errors.New(util.MsgUsuarioNoEncontrado)
+		return nil, errors.New(util.MSG_USER_NOT_FOUND)
 	}
 	return toUsuarioOutput(usuario), nil
 }
