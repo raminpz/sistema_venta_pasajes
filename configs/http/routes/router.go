@@ -89,6 +89,7 @@ func NewRouter(db *gorm.DB) *mux.Router {
 
 	// Registro de rutas de venta
 	ventahandler.RegisterRoutes(api, db)
+
 	// Handler global para OPTIONS (preflight CORS)
 	router.Methods(http.MethodOptions).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)

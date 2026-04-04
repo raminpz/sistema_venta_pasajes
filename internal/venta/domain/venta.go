@@ -8,6 +8,11 @@ type Venta struct {
 	IDVenta           int64     `gorm:"column:ID_VENTA;primaryKey;autoIncrement" json:"id_venta"`
 	IDUsuario         int64     `gorm:"column:ID_USUARIO" json:"id_usuario"`
 	IDTipoComprobante int64     `gorm:"column:ID_TIPO_COMPROBANTE" json:"id_tipo_comprobante"`
+	IDProgramacion    int64     `gorm:"column:ID_PROGRAMACION" json:"id_programacion"`
+	IDPasajero        int64     `gorm:"column:ID_PASAJERO" json:"id_pasajero"`
+	IDAsiento         int64     `gorm:"column:ID_ASIENTO" json:"id_asiento"`
+	Precio            float64   `gorm:"column:PRECIO" json:"precio"`
+	Descuento         *float64  `gorm:"column:DESCUENTO" json:"descuento"`
 	Serie             string    `gorm:"column:SERIE" json:"serie"`
 	Correlativo       uint      `gorm:"column:CORRELATIVO" json:"correlativo"`
 	Nota              string    `gorm:"column:NOTA" json:"nota"`

@@ -3,15 +3,6 @@
   <component name="CopilotDiffPersistence">
     <option name="pendingDiffs">
       <map>
-        <entry key="$PROJECT_DIR$/internal/terminal/util/constants.go">
-          <value>
-            <PendingDiffInfo>
-              <option name="filePath" value="$PROJECT_DIR$/internal/terminal/util/constants.go" />
-              <option name="originalContent" value="package util&#10;" />
-              <option name="updatedContent" value="package util&#10;&#10;// Mensajes de error reutilizables&#10;const (&#10;&#9;ErrTelefonoFormato = &quot;El teléfono debe tener exactamente 9 dígitos numéricos&quot;&#10;&#9;ErrEmailFormato    = &quot;El email no tiene un formato válido&quot;&#10;&#9;ErrFechaFormato    = &quot;La fecha debe tener formato YYYY-MM-DD&quot;&#10;&#9;ErrCampoRequerido  = &quot;El campo es requerido&quot;&#10;&#9;ErrEnumInvalido    = &quot;Valor no permitido para el campo&quot;&#10;)&#10;&#10;// Regex reutilizables&#10;const (&#10;&#9;RegexTelefono = `^[0-9]{9}$`&#10;&#9;RegexEmail    = `^[\w\.-]+@[\w\.-]+\.[a-zA-Z]{2,}$`&#10;)" />
-            </PendingDiffInfo>
-          </value>
-        </entry>
         <entry key="$PROJECT_DIR$/internal/terminal/util/validate.go">
           <value>
             <PendingDiffInfo>

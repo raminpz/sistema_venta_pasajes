@@ -75,12 +75,13 @@ func TestHandler_Create_ServiceError(t *testing.T) {
 			return nil, errors.New("error interno")
 		},
 	}}
-	body := `{"id_usuario":1,"id_tipo_comprobante":2,"subtotal":100}`
+	body := `{"id_usuario":1,"id_tipo_comprobante":2,"precio":100}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/venta", strings.NewReader(body))
 	rw := httptest.NewRecorder()
 	h.Create(rw, req)
-	if rw.Code != http.StatusBadRequest {
-		t.Errorf("esperado 400, obtenido %d", rw.Code)
+	// Un error genérico del service se trata como error interno (500)
+	if rw.Code != http.StatusInternalServerError {
+		t.Errorf("esperado 500, obtenido %d", rw.Code)
 	}
 }
 

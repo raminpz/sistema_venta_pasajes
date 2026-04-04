@@ -15,11 +15,24 @@ const (
 	MSG_VENTA_TIPO_COMPROBANTE_ERROR = "Tipo de comprobante invalido. Use: 1=BOLETA, 2=FACTURA, 3=TICKET"
 	MSG_VENTA_SERIE_ERROR            = "No se pudo determinar la serie del comprobante"
 	MSG_VENTA_CORRELATIVO_ERROR      = "No se pudo obtener el correlativo automatico"
-	MSG_VENTA_SUBTOTAL_REQUIRED      = "El subtotal debe ser mayor a cero"
-	MSG_VENTA_USUARIO_REQUIRED       = "El usuario es obligatorio"
-	MSG_VENTA_COMPROBANTE_REQUIRED   = "El tipo de comprobante es obligatorio"
 	MSG_VENTA_QR_ERROR               = "Error al generar el codigo QR"
 	MSG_VENTA_PAGINATION_INVALID     = "Parametros de paginacion invalidos"
+
+	MSG_VENTA_USUARIO_REQUIRED      = "El campo id_usuario es obligatorio"
+	MSG_VENTA_COMPROBANTE_REQUIRED  = "El campo id_tipo_comprobante es obligatorio"
+	MSG_VENTA_PROGRAMACION_REQUIRED = "El campo id_programacion es obligatorio"
+	MSG_VENTA_PASAJERO_REQUIRED     = "El campo id_pasajero es obligatorio"
+	MSG_VENTA_ASIENTO_REQUIRED      = "El campo id_asiento es obligatorio"
+	MSG_VENTA_PRECIO_INVALID        = "El campo precio no puede ser negativo"
+	MSG_VENTA_DESCUENTO_INVALID     = "El descuento no puede ser negativo ni mayor al precio"
+
+	MSG_VENTA_FK_PROGRAMACION    = "El id_programacion indicado no existe"
+	MSG_VENTA_FK_PASAJERO        = "El id_pasajero indicado no existe"
+	MSG_VENTA_FK_ASIENTO         = "El id_asiento indicado no existe"
+	MSG_VENTA_FK_USUARIO         = "El id_usuario indicado no existe"
+	MSG_VENTA_FK_COMPROBANTE     = "El id_tipo_comprobante indicado no existe"
+	MSG_VENTA_DUPLICATE_ASIENTO  = "El asiento ya fue vendido para esta programacion"
+	MSG_VENTA_DUPLICATE_PASAJERO = "El pasajero ya tiene un pasaje registrado para esta programacion"
 
 	ERR_CODE_INVALID_BODY = "invalid_body"
 	ERR_CODE_INVALID_ID   = "invalid_id"
@@ -29,4 +42,5 @@ const (
 	ERR_CODE_DELETE       = "delete_error"
 	ERR_CODE_LIST         = "list_error"
 	ERR_CODE_NOT_FOUND    = "not_found"
+	ERR_CODE_DUPLICATE    = "duplicate_resource"
 )

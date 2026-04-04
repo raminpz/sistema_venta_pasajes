@@ -15,7 +15,7 @@ type mockVentaRepository struct {
 	UpdateFunc          func(venta *domain.Venta) error
 	DeleteFunc          func(id int64) error
 	GetByIDFunc         func(id int64) (*domain.Venta, error)
-	ListFunc            func() ([]domain.Venta, error)
+	ListFunc            func(offset, limit int) ([]domain.Venta, int, error)
 	NextCorrelativoFunc func(serie string) (uint, error)
 }
 
@@ -47,11 +47,11 @@ func (m *mockVentaRepository) GetByID(id int64) (*domain.Venta, error) {
 	return nil, nil
 }
 
-func (m *mockVentaRepository) List() ([]domain.Venta, error) {
+func (m *mockVentaRepository) List(offset, limit int) ([]domain.Venta, int, error) {
 	if m.ListFunc != nil {
-		return m.ListFunc()
+		return m.ListFunc(offset, limit)
 	}
-	return nil, nil
+	return nil, 0, nil
 }
 
 func (m *mockVentaRepository) NextCorrelativo(serie string) (uint, error) {
@@ -66,7 +66,7 @@ func (m *mockVentaRepository) NextCorrelativo(serie string) (uint, error) {
 // ---------------------------------------------------------------------------
 
 func TestVentaRepository_Create_OK(t *testing.T) {
-	venta := &domain.Venta{IDUsuario: 1, Serie: "B001", Correlativo: 1, Subtotal: 100}
+	venta := &domain.Venta{IDUsuario: 1, IDProgramacion: 10, IDPasajero: 20, IDAsiento: 5, Precio: 80, Serie: "B001", Correlativo: 1, Subtotal: 80}
 	repo := &mockVentaRepository{
 		CreateFunc: func(v *domain.Venta) error {
 			if v.Serie != "B001" {
@@ -156,7 +156,7 @@ func TestVentaRepository_Delete_Error(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestVentaRepository_GetByID_OK(t *testing.T) {
-	esperada := &domain.Venta{IDVenta: 3, Serie: "F001", Correlativo: 10}
+	esperada := &domain.Venta{IDVenta: 3, IDPasajero: 20, IDAsiento: 5, Serie: "F001", Correlativo: 10}
 	repo := &mockVentaRepository{
 		GetByIDFunc: func(id int64) (*domain.Venta, error) {
 			if id == 3 {
@@ -193,26 +193,29 @@ func TestVentaRepository_GetByID_NotFound(t *testing.T) {
 func TestVentaRepository_List_OK(t *testing.T) {
 	ventas := []domain.Venta{{IDVenta: 1}, {IDVenta: 2}, {IDVenta: 3}}
 	repo := &mockVentaRepository{
-		ListFunc: func() ([]domain.Venta, error) {
-			return ventas, nil
+		ListFunc: func(offset, limit int) ([]domain.Venta, int, error) {
+			return ventas, len(ventas), nil
 		},
 	}
-	result, err := repo.List()
+	result, total, err := repo.List(0, 15)
 	if err != nil {
 		t.Fatalf("no se esperaba error: %v", err)
 	}
 	if len(result) != 3 {
 		t.Errorf("esperado 3 ventas, obtenido %d", len(result))
 	}
+	if total != 3 {
+		t.Errorf("esperado total 3, obtenido %d", total)
+	}
 }
 
 func TestVentaRepository_List_Error(t *testing.T) {
 	repo := &mockVentaRepository{
-		ListFunc: func() ([]domain.Venta, error) {
-			return nil, errors.New("error de BD")
+		ListFunc: func(offset, limit int) ([]domain.Venta, int, error) {
+			return nil, 0, errors.New("error de BD")
 		},
 	}
-	_, err := repo.List()
+	_, _, err := repo.List(0, 15)
 	if err == nil {
 		t.Error("se esperaba error al listar")
 	}
@@ -225,7 +228,6 @@ func TestVentaRepository_List_Error(t *testing.T) {
 func TestVentaRepository_NextCorrelativo_PrimeroEnSerie(t *testing.T) {
 	repo := &mockVentaRepository{
 		NextCorrelativoFunc: func(serie string) (uint, error) {
-			// Simula que no hay registros → retorna 1
 			if serie == "B001" {
 				return 1, nil
 			}
@@ -244,7 +246,6 @@ func TestVentaRepository_NextCorrelativo_PrimeroEnSerie(t *testing.T) {
 func TestVentaRepository_NextCorrelativo_Secuencial(t *testing.T) {
 	repo := &mockVentaRepository{
 		NextCorrelativoFunc: func(serie string) (uint, error) {
-			// Simula que ya hay 5 boletas → siguiente es 6
 			return 6, nil
 		},
 	}
@@ -258,11 +259,7 @@ func TestVentaRepository_NextCorrelativo_Secuencial(t *testing.T) {
 }
 
 func TestVentaRepository_NextCorrelativo_IndependientePorSerie(t *testing.T) {
-	contadores := map[string]uint{
-		"B001": 3,
-		"F001": 10,
-		"T001": 1,
-	}
+	contadores := map[string]uint{"B001": 3, "F001": 10, "T001": 1}
 	repo := &mockVentaRepository{
 		NextCorrelativoFunc: func(serie string) (uint, error) {
 			v, ok := contadores[serie]
@@ -272,7 +269,6 @@ func TestVentaRepository_NextCorrelativo_IndependientePorSerie(t *testing.T) {
 			return v, nil
 		},
 	}
-
 	casos := []struct {
 		serie    string
 		esperado uint

@@ -3,11 +3,14 @@ package service
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"sistema_venta_pasajes/internal/venta/domain"
 	"sistema_venta_pasajes/internal/venta/input"
 	"sistema_venta_pasajes/internal/venta/repository"
 	"sistema_venta_pasajes/internal/venta/util"
 	"sistema_venta_pasajes/pkg"
+
+	"gorm.io/gorm"
 )
 
 type VentaService interface {
@@ -33,6 +36,11 @@ func toVentaOutput(v *domain.Venta) *input.VentaOutput {
 		IDVenta:           v.IDVenta,
 		IDUsuario:         v.IDUsuario,
 		IDTipoComprobante: v.IDTipoComprobante,
+		IDProgramacion:    v.IDProgramacion,
+		IDPasajero:        v.IDPasajero,
+		IDAsiento:         v.IDAsiento,
+		Precio:            v.Precio,
+		Descuento:         v.Descuento,
 		Serie:             v.Serie,
 		Correlativo:       v.Correlativo,
 		NumeroComprobante: fmt.Sprintf("%s-%06d", v.Serie, v.Correlativo),
@@ -48,14 +56,14 @@ func toVentaOutput(v *domain.Venta) *input.VentaOutput {
 }
 
 func (s *VentaServiceImpl) Create(in input.VentaCreateInput) (*input.VentaOutput, error) {
-	if !util.ValidarVentaInput(in.IDUsuario, in.IDTipoComprobante, in.Subtotal) {
-		if in.IDUsuario <= 0 {
-			return nil, errors.New(util.MSG_VENTA_USUARIO_REQUIRED)
-		}
-		if in.IDTipoComprobante <= 0 {
-			return nil, errors.New(util.MSG_VENTA_COMPROBANTE_REQUIRED)
-		}
-		return nil, errors.New(util.MSG_VENTA_SUBTOTAL_REQUIRED)
+	pkg.TrimSpacesOnStruct(&in)
+
+	if err := util.ValidarCreateInput(
+		in.IDUsuario, in.IDTipoComprobante,
+		in.IDProgramacion, in.IDPasajero, in.IDAsiento,
+		in.Precio, in.Descuento,
+	); err != nil {
+		return nil, err
 	}
 
 	serie, err := util.SerieFromTipoComprobante(in.IDTipoComprobante)
@@ -68,17 +76,24 @@ func (s *VentaServiceImpl) Create(in input.VentaCreateInput) (*input.VentaOutput
 		return nil, errors.New(util.MSG_VENTA_CORRELATIVO_ERROR)
 	}
 
+	// Calcular subtotal automáticamente desde precio y descuento
+	descuento := 0.0
+	if in.Descuento != nil {
+		descuento = *in.Descuento
+	}
+	subtotal := in.Precio - descuento
+
 	var igv, total float64
 	switch in.IDTipoComprobante {
 	case 2: // FACTURA → aplica 18% IGV
-		igv = in.Subtotal * 0.18
-		total = in.Subtotal + igv
+		igv = subtotal * 0.18
+		total = subtotal + igv
 	default: // BOLETA o TICKET → sin IGV
 		igv = 0
-		total = in.Subtotal
+		total = subtotal
 	}
 
-	qrData := fmt.Sprintf("VENTA|%s-%06d|SUBTOTAL:%.2f|TOTAL:%.2f", serie, correlativo, in.Subtotal, total)
+	qrData := fmt.Sprintf("VENTA|%s-%06d|PRECIO:%.2f|TOTAL:%.2f", serie, correlativo, in.Precio, total)
 	qr, errQR := pkg.GenerateQRCode(qrData, 256)
 	if errQR != nil {
 		return nil, errors.New(util.MSG_VENTA_QR_ERROR)
@@ -87,19 +102,23 @@ func (s *VentaServiceImpl) Create(in input.VentaCreateInput) (*input.VentaOutput
 	venta := &domain.Venta{
 		IDUsuario:         in.IDUsuario,
 		IDTipoComprobante: in.IDTipoComprobante,
+		IDProgramacion:    in.IDProgramacion,
+		IDPasajero:        in.IDPasajero,
+		IDAsiento:         in.IDAsiento,
+		Precio:            in.Precio,
+		Descuento:         in.Descuento,
 		Serie:             serie,
 		Correlativo:       correlativo,
 		Nota:              in.Nota,
 		Observaciones:     in.Observaciones,
-		Subtotal:          in.Subtotal,
+		Subtotal:          subtotal,
 		IGV:               igv,
 		Total:             total,
 		QRCode:            qr,
 	}
-	pkg.TrimSpacesOnStruct(venta)
 
 	if err := s.repo.Create(venta); err != nil {
-		return nil, err
+		return nil, util.ParseDBError(err, util.ERR_CODE_CREATE, util.MSG_VENTA_CREATE_ERROR)
 	}
 	return toVentaOutput(venta), nil
 }
@@ -107,26 +126,45 @@ func (s *VentaServiceImpl) Create(in input.VentaCreateInput) (*input.VentaOutput
 func (s *VentaServiceImpl) Update(id int64, in input.VentaUpdateInput) (*input.VentaOutput, error) {
 	venta, err := s.repo.GetByID(id)
 	if err != nil {
-		return nil, errors.New(util.MSG_VENTA_NOT_FOUND)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, pkg.NotFound(util.ERR_CODE_NOT_FOUND, util.MSG_VENTA_NOT_FOUND)
+		}
+		return nil, pkg.NewAppError(http.StatusInternalServerError, util.ERR_CODE_UPDATE, util.MSG_VENTA_UPDATE_ERROR).WithCause(err)
 	}
 	venta.Nota = in.Nota
 	venta.Observaciones = in.Observaciones
 	pkg.TrimSpacesOnStruct(venta)
 
 	if err := s.repo.Update(venta); err != nil {
-		return nil, err
+		return nil, util.ParseDBError(err, util.ERR_CODE_UPDATE, util.MSG_VENTA_UPDATE_ERROR)
 	}
 	return toVentaOutput(venta), nil
 }
 
 func (s *VentaServiceImpl) Delete(id int64) error {
-	return s.repo.Delete(id)
+	if id <= 0 {
+		return pkg.BadRequest(util.ERR_CODE_INVALID_ID, util.MSG_VENTA_NOT_FOUND)
+	}
+	err := s.repo.Delete(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return pkg.NotFound(util.ERR_CODE_NOT_FOUND, util.MSG_VENTA_NOT_FOUND)
+		}
+		return util.ParseDBError(err, util.ERR_CODE_DELETE, util.MSG_VENTA_DELETE_ERROR)
+	}
+	return nil
 }
 
 func (s *VentaServiceImpl) GetByID(id int64) (*input.VentaOutput, error) {
+	if id <= 0 {
+		return nil, pkg.BadRequest(util.ERR_CODE_INVALID_ID, util.MSG_VENTA_NOT_FOUND)
+	}
 	venta, err := s.repo.GetByID(id)
 	if err != nil {
-		return nil, errors.New(util.MSG_VENTA_NOT_FOUND)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, pkg.NotFound(util.ERR_CODE_NOT_FOUND, util.MSG_VENTA_NOT_FOUND)
+		}
+		return nil, pkg.NewAppError(http.StatusInternalServerError, util.ERR_CODE_NOT_FOUND, util.MSG_VENTA_NOT_FOUND).WithCause(err)
 	}
 	return toVentaOutput(venta), nil
 }
@@ -135,9 +173,9 @@ func (s *VentaServiceImpl) List(page, size int) ([]input.VentaOutput, int, error
 	offset, limit, _ := pkg.Paginate(page, size, 0)
 	ventas, total, err := s.repo.List(offset, limit)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, pkg.NewAppError(http.StatusInternalServerError, util.ERR_CODE_LIST, util.MSG_VENTA_LIST_ERROR).WithCause(err)
 	}
-	var outs []input.VentaOutput
+	outs := make([]input.VentaOutput, 0, len(ventas))
 	for _, v := range ventas {
 		vCopy := v
 		outs = append(outs, *toVentaOutput(&vCopy))

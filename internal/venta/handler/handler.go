@@ -24,12 +24,12 @@ func NewVentaHandler(s service.VentaService) *VentaHandler {
 func (h *VentaHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var in input.VentaCreateInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-		pkg.WriteError(w, r, pkg.BadRequest(util.ERR_CODE_INVALID_BODY, util.MSG_VENTA_VALIDATION_ERROR).WithCause(err))
+		pkg.HandleDecodeError(w, err)
 		return
 	}
 	venta, err := h.service.Create(in)
 	if err != nil {
-		pkg.WriteError(w, r, pkg.NewAppError(http.StatusBadRequest, util.ERR_CODE_CREATE, err.Error()))
+		pkg.WriteError(w, r, err)
 		return
 	}
 	pkg.WriteSuccess(w, http.StatusCreated, util.MSG_VENTA_CREATED, venta, nil)
@@ -43,12 +43,12 @@ func (h *VentaHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	var in input.VentaUpdateInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-		pkg.WriteError(w, r, pkg.BadRequest(util.ERR_CODE_INVALID_BODY, util.MSG_VENTA_VALIDATION_ERROR).WithCause(err))
+		pkg.HandleDecodeError(w, err)
 		return
 	}
 	venta, err := h.service.Update(id, in)
 	if err != nil {
-		pkg.WriteError(w, r, pkg.NewAppError(http.StatusBadRequest, util.ERR_CODE_UPDATE, err.Error()))
+		pkg.WriteError(w, r, err)
 		return
 	}
 	pkg.WriteSuccess(w, http.StatusOK, util.MSG_VENTA_UPDATED, venta, nil)
@@ -61,7 +61,7 @@ func (h *VentaHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.service.Delete(id); err != nil {
-		pkg.WriteError(w, r, pkg.NewAppError(http.StatusInternalServerError, util.ERR_CODE_DELETE, util.MSG_VENTA_DELETE_ERROR).WithCause(err))
+		pkg.WriteError(w, r, err)
 		return
 	}
 	pkg.WriteSuccess(w, http.StatusOK, util.MSG_VENTA_DELETED, nil, nil)
@@ -75,7 +75,7 @@ func (h *VentaHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	}
 	venta, err := h.service.GetByID(id)
 	if err != nil {
-		pkg.WriteError(w, r, pkg.NewAppError(http.StatusNotFound, util.ERR_CODE_NOT_FOUND, util.MSG_VENTA_NOT_FOUND).WithCause(err))
+		pkg.WriteError(w, r, err)
 		return
 	}
 	pkg.WriteSuccess(w, http.StatusOK, util.MSG_VENTA_GET, venta, nil)

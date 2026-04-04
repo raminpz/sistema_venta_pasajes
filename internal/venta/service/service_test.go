@@ -49,18 +49,25 @@ func (f *fakeRepo) NextCorrelativo(_ string) (uint, error) {
 	return f.nextCorrelativo, nil
 }
 
+// ventaInput crea un input válido con los campos obligatorios.
+func ventaInput(tipo int64, precio float64) input.VentaCreateInput {
+	return input.VentaCreateInput{
+		IDUsuario:         1,
+		IDTipoComprobante: tipo,
+		IDProgramacion:    10,
+		IDPasajero:        20,
+		IDAsiento:         5,
+		Precio:            precio,
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Tests Create
 // ---------------------------------------------------------------------------
 
 func TestVentaService_Create_Factura_AutoSerie(t *testing.T) {
 	s := &VentaServiceImpl{repo: &fakeRepo{nextCorrelativo: 1}}
-	in := input.VentaCreateInput{
-		IDUsuario:         1,
-		IDTipoComprobante: 2,
-		Subtotal:          100,
-	}
-	out, err := s.Create(in)
+	out, err := s.Create(ventaInput(2, 100))
 	if err != nil {
 		t.Fatalf("no se esperaba error: %v", err)
 	}
@@ -73,8 +80,9 @@ func TestVentaService_Create_Factura_AutoSerie(t *testing.T) {
 	if out.NumeroComprobante != "F001-000001" {
 		t.Errorf("numero_comprobante esperado F001-000001, obtenido %s", out.NumeroComprobante)
 	}
-	if out.IGV != 18 || out.Total != 118 {
-		t.Errorf("IGV o Total incorrectos: IGV=%v, Total=%v", out.IGV, out.Total)
+	// Precio=100, sin descuento → subtotal=100, IGV=18, Total=118
+	if out.Subtotal != 100 || out.IGV != 18 || out.Total != 118 {
+		t.Errorf("Subtotal/IGV/Total incorrectos: %v/%v/%v", out.Subtotal, out.IGV, out.Total)
 	}
 	if out.QRCode == "" {
 		t.Error("QRCode no generado")
@@ -83,12 +91,7 @@ func TestVentaService_Create_Factura_AutoSerie(t *testing.T) {
 
 func TestVentaService_Create_Boleta_AutoSerie(t *testing.T) {
 	s := &VentaServiceImpl{repo: &fakeRepo{nextCorrelativo: 5}}
-	in := input.VentaCreateInput{
-		IDUsuario:         1,
-		IDTipoComprobante: 1, // BOLETA
-		Subtotal:          200,
-	}
-	out, err := s.Create(in)
+	out, err := s.Create(ventaInput(1, 200))
 	if err != nil {
 		t.Fatalf("no se esperaba error: %v", err)
 	}
@@ -101,6 +104,7 @@ func TestVentaService_Create_Boleta_AutoSerie(t *testing.T) {
 	if out.NumeroComprobante != "B001-000005" {
 		t.Errorf("numero_comprobante esperado B001-000005, obtenido %s", out.NumeroComprobante)
 	}
+	// Boleta: sin IGV → subtotal=200, IGV=0, Total=200
 	if out.IGV != 0 || out.Total != 200 {
 		t.Errorf("IGV o Total incorrectos para boleta: IGV=%v, Total=%v", out.IGV, out.Total)
 	}
@@ -108,12 +112,7 @@ func TestVentaService_Create_Boleta_AutoSerie(t *testing.T) {
 
 func TestVentaService_Create_Ticket_AutoSerie(t *testing.T) {
 	s := &VentaServiceImpl{repo: &fakeRepo{nextCorrelativo: 3}}
-	in := input.VentaCreateInput{
-		IDUsuario:         1,
-		IDTipoComprobante: 3, // TICKET
-		Subtotal:          150,
-	}
-	out, err := s.Create(in)
+	out, err := s.Create(ventaInput(3, 150))
 	if err != nil {
 		t.Fatalf("no se esperaba error: %v", err)
 	}
@@ -128,38 +127,100 @@ func TestVentaService_Create_Ticket_AutoSerie(t *testing.T) {
 	}
 }
 
+func TestVentaService_Create_ConDescuento(t *testing.T) {
+	s := &VentaServiceImpl{repo: &fakeRepo{nextCorrelativo: 2}}
+	desc := 20.0
+	in := input.VentaCreateInput{
+		IDUsuario: 1, IDTipoComprobante: 2,
+		IDProgramacion: 10, IDPasajero: 20, IDAsiento: 5,
+		Precio: 100, Descuento: &desc,
+	}
+	out, err := s.Create(in)
+	if err != nil {
+		t.Fatalf("no se esperaba error: %v", err)
+	}
+	// subtotal=80, IGV≈14.4, Total≈94.4
+	if out.Subtotal != 80 {
+		t.Errorf("subtotal esperado 80, obtenido %v", out.Subtotal)
+	}
+	// Tolerancia por precisión float64
+	diff := out.IGV - 14.4
+	if diff > 0.001 || diff < -0.001 {
+		t.Errorf("IGV esperado ~14.4, obtenido %v", out.IGV)
+	}
+}
+
 func TestVentaService_Create_TipoComprobanteInvalido(t *testing.T) {
 	s := &VentaServiceImpl{repo: &fakeRepo{}}
-	in := input.VentaCreateInput{
-		IDUsuario:         1,
-		IDTipoComprobante: 99, // invalido
-		Subtotal:          100,
-	}
+	in := ventaInput(99, 100)
 	_, err := s.Create(in)
 	if err == nil {
 		t.Error("debe fallar por tipo de comprobante invalido")
 	}
 }
 
-func TestVentaService_Create_SubtotalCero(t *testing.T) {
+func TestVentaService_Create_PrecioCero_Valido(t *testing.T) {
+	// precio = 0 es válido (boleto gratuito)
+	s := &VentaServiceImpl{repo: &fakeRepo{nextCorrelativo: 1}}
+	out, err := s.Create(ventaInput(1, 0))
+	if err != nil {
+		t.Errorf("precio=0 debe ser válido (boleto gratuito), error: %v", err)
+	}
+	if out.Subtotal != 0 || out.Total != 0 {
+		t.Errorf("subtotal y total deben ser 0 para precio=0, obtenido subtotal=%v total=%v", out.Subtotal, out.Total)
+	}
+}
+
+func TestVentaService_Create_PrecioNegativo(t *testing.T) {
+	// precio negativo debe fallar
 	s := &VentaServiceImpl{repo: &fakeRepo{}}
-	_, err := s.Create(input.VentaCreateInput{IDUsuario: 1, IDTipoComprobante: 1, Subtotal: 0})
+	_, err := s.Create(ventaInput(1, -10))
 	if err == nil {
-		t.Error("debe fallar por subtotal invalido")
+		t.Error("debe fallar por precio negativo")
 	}
 }
 
 func TestVentaService_Create_UsuarioRequerido(t *testing.T) {
 	s := &VentaServiceImpl{repo: &fakeRepo{}}
-	_, err := s.Create(input.VentaCreateInput{IDUsuario: 0, IDTipoComprobante: 1, Subtotal: 100})
+	in := input.VentaCreateInput{
+		IDUsuario: 0, IDTipoComprobante: 1,
+		IDProgramacion: 10, IDPasajero: 20, IDAsiento: 5, Precio: 100,
+	}
+	_, err := s.Create(in)
 	if err == nil {
 		t.Error("debe fallar por usuario requerido")
 	}
 }
 
+func TestVentaService_Create_AsientoRequerido(t *testing.T) {
+	s := &VentaServiceImpl{repo: &fakeRepo{}}
+	in := input.VentaCreateInput{
+		IDUsuario: 1, IDTipoComprobante: 1,
+		IDProgramacion: 10, IDPasajero: 20, IDAsiento: 0, Precio: 100,
+	}
+	_, err := s.Create(in)
+	if err == nil {
+		t.Error("debe fallar por asiento requerido")
+	}
+}
+
+func TestVentaService_Create_DescuentoInvalido(t *testing.T) {
+	s := &VentaServiceImpl{repo: &fakeRepo{}}
+	desc := 200.0 // mayor al precio
+	in := input.VentaCreateInput{
+		IDUsuario: 1, IDTipoComprobante: 1,
+		IDProgramacion: 10, IDPasajero: 20, IDAsiento: 5,
+		Precio: 100, Descuento: &desc,
+	}
+	_, err := s.Create(in)
+	if err == nil {
+		t.Error("debe fallar por descuento mayor al precio")
+	}
+}
+
 func TestVentaService_Create_ErrorCorrelativo(t *testing.T) {
 	s := &VentaServiceImpl{repo: &fakeRepo{nextCorrelativoErr: errors.New("db error")}}
-	_, err := s.Create(input.VentaCreateInput{IDUsuario: 1, IDTipoComprobante: 1, Subtotal: 100})
+	_, err := s.Create(ventaInput(1, 100))
 	if err == nil {
 		t.Error("debe fallar si no se puede obtener el correlativo")
 	}
@@ -167,7 +228,7 @@ func TestVentaService_Create_ErrorCorrelativo(t *testing.T) {
 
 func TestVentaService_Create_ErrorRepo(t *testing.T) {
 	s := &VentaServiceImpl{repo: &fakeRepo{createErr: errors.New("fail")}}
-	_, err := s.Create(input.VentaCreateInput{IDUsuario: 1, IDTipoComprobante: 1, Subtotal: 100})
+	_, err := s.Create(ventaInput(1, 100))
 	if err == nil {
 		t.Error("debe fallar si el repo falla al crear")
 	}
@@ -304,7 +365,7 @@ func TestToVentaOutput_NumeroComprobante(t *testing.T) {
 		{"B001", 123, "B001-000123"},
 		{"F001", 1, "F001-000001"},
 		{"F001", 9999, "F001-009999"},
-		{"T001", 1000000, "T001-1000000"}, // correlativo grande -> sin truncar
+		{"T001", 1000000, "T001-1000000"},
 	}
 	for _, c := range casos {
 		v := &domain.Venta{Serie: c.serie, Correlativo: c.correlativo}
