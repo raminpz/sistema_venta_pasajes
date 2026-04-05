@@ -30,18 +30,20 @@ func (m *mockRepo) Update(c *domain.Conductor) error {
 	return nil
 }
 func (m *mockRepo) Delete(id int64) error {
-	if id == 1 { return nil }
+	if id == 1 {
+		return nil
+	}
 	return errors.New("not found")
 }
 
 func TestService_Create(t *testing.T) {
 	s := New(&mockRepo{})
 	in := input.CreateConductorInput{
-		Nombres: "Juan",
-		Apellidos: "Perez",
-		DNI: "12345678",
-		NumeroLicencia: "ABC123456",
-		Telefono: "987654321",
+		Nombres:           "Juan",
+		Apellidos:         "Perez",
+		DNI:               "12345678",
+		NumeroLicencia:    "ABC123456",
+		Telefono:          "987654321",
 		FechaVencLicencia: "2027-03-29",
 	}
 	c, err := s.Create(context.Background(), in)
@@ -53,15 +55,15 @@ func TestService_Create(t *testing.T) {
 func TestService_Create_invalid(t *testing.T) {
 	s := New(&mockRepo{})
 	in := input.CreateConductorInput{
-		Nombres: "Juan",
-		Apellidos: "Perez",
-		DNI: "12345678",
-		NumeroLicencia: "1234",
-		Telefono: "987654321",
+		Nombres:           "Juan",
+		Apellidos:         "Perez",
+		DNI:               "12345678",
+		NumeroLicencia:    "1234",
+		Telefono:          "987654321",
 		FechaVencLicencia: "2027-03-29",
 	}
 	_, err := s.Create(context.Background(), in)
 	if err == nil {
-		t.Errorf("Expected error for invalid licencia")
+		t.Errorf("Expected error for invalid control_acceso")
 	}
 }

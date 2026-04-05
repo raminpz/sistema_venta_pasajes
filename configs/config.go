@@ -11,10 +11,11 @@ import (
 )
 
 type Config struct {
-	AppPort string
-	AppEnv  string
-	DB      DBConfig
-	HTTP    HTTPConfig
+	AppPort        string
+	AppEnv         string
+	ProviderAPIKey string // PROVIDER_API_KEY: clave secreta exclusiva del proveedor
+	DB             DBConfig
+	HTTP           HTTPConfig
 }
 
 type DBConfig struct {
@@ -39,8 +40,9 @@ func Load() (Config, error) {
 	_ = godotenv.Load(".env")
 
 	cfg := Config{
-		AppPort: getEnv("APP_PORT", "8080"),
-		AppEnv:  getEnv("APP_ENV", "development"),
+		AppPort:        getEnv("APP_PORT", "8080"),
+		AppEnv:         getEnv("APP_ENV", "development"),
+		ProviderAPIKey: getEnv("PROVIDER_API_KEY", ""),
 		DB: DBConfig{
 			Host:            getEnv("DB_HOST", "127.0.0.1"),
 			Port:            getEnv("DB_PORT", "3306"),
@@ -109,5 +111,3 @@ func getEnvAsInt(key string, fallback int) int {
 
 	return parsed
 }
-
-

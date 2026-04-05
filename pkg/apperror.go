@@ -81,6 +81,14 @@ func ServiceUnavailable(code, message string) *AppError {
 	return NewAppError(http.StatusServiceUnavailable, code, message)
 }
 
+func Forbidden(code, message string) *AppError {
+	return NewAppError(http.StatusForbidden, code, message)
+}
+
+func Unauthorized(code, message string) *AppError {
+	return NewAppError(http.StatusUnauthorized, code, message)
+}
+
 func Internal(message string, _ ...interface{}) *AppError {
 	return NewAppError(http.StatusInternalServerError, "internal_error", message)
 }

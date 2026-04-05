@@ -15,6 +15,7 @@ import (
 
 	asientohandler "sistema_venta_pasajes/internal/asiento/handler"
 	conductorhandler "sistema_venta_pasajes/internal/conductor/handler"
+	licenciahandler "sistema_venta_pasajes/internal/control_acceso/handler"
 	empresahandler "sistema_venta_pasajes/internal/empresa/handler"
 	encomiendahandler "sistema_venta_pasajes/internal/encomienda/handler"
 	pagohandler "sistema_venta_pasajes/internal/pago/handler"
@@ -30,7 +31,7 @@ import (
 
 type AppHandler func(w http.ResponseWriter, r *http.Request) error
 
-func NewRouter(db *gorm.DB) *mux.Router {
+func NewRouter(db *gorm.DB, providerAPIKey string) *mux.Router {
 	router := mux.NewRouter()
 
 	// Middleware de logging
@@ -48,7 +49,20 @@ func NewRouter(db *gorm.DB) *mux.Router {
 	router.Handle("/health", adapt(healthHandler)).Methods("GET")
 	router.Handle("/ready", adapt(readyHandler(db))).Methods("GET")
 
+	// =========================================================
+	// Control de acceso: registradas en el router principal para que
+	// - /api/v1/control-acceso/status sea público (sin control de acceso)
+	// - /api/v1/control-acceso/** requiera X-Provider-Key (sin control de acceso)
+	// ControlAccesoSistema SOLO aplica al subrouter "api" de abajo.
+	// =========================================================
+	licenciahandler.RegisterRoutes(router, db, providerAPIKey)
+
+	// =========================================================
+	// Todas las demás rutas: sujetas al control de acceso por estado del sistema
+	// =========================================================
 	api := router.PathPrefix("/api/v1").Subrouter()
+	api.Use(middleware2.ControlAccesoSistema(db))
+
 	api.Handle("/health", adapt(healthHandler)).Methods("GET")
 	api.Handle("/ready", adapt(readyHandler(db))).Methods("GET")
 

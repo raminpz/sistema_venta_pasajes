@@ -31,13 +31,13 @@ func Run() error {
 
 	log.Printf("conexion a MySQL OK: %s:%s/%s", cfg.DB.Host, cfg.DB.Port, cfg.DB.Name)
 
-	router := routes.NewRouter(db)
+	router := routes.NewRouter(db, cfg.ProviderAPIKey)
 
 	// Middleware CORS para desarrollo local
 	corsHandler := handlers.CORS(
 		handlers.AllowedOrigins([]string{"*"}),
 		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE"}),
-		handlers.AllowedHeaders([]string{"Content-Type", "Authorization"}),
+		handlers.AllowedHeaders([]string{"Content-Type", "Authorization", "X-Provider-Key"}),
 	)(router)
 
 	server := &http.Server{

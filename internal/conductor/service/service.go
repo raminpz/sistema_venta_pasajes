@@ -58,24 +58,24 @@ func (s *service) Create(ctx context.Context, input input.CreateConductorInput) 
 		return nil, errors.New("El formato de fecha_venc_licencia debe ser YYYY-MM-DD")
 	}
 	conductor := &domain.Conductor{
-		Nombres:        pkg.CapitalizeWords(input.Nombres),
-		Apellidos:      pkg.CapitalizeWords(input.Apellidos),
-		DNI:            input.DNI,
-		NumeroLicencia: input.NumeroLicencia,
-		Telefono:       input.Telefono,
-		Direccion:      input.Direccion,
+		Nombres:           pkg.CapitalizeWords(input.Nombres),
+		Apellidos:         pkg.CapitalizeWords(input.Apellidos),
+		DNI:               input.DNI,
+		NumeroLicencia:    input.NumeroLicencia,
+		Telefono:          input.Telefono,
+		Direccion:         input.Direccion,
 		FechaVencLicencia: fechaVenc,
 	}
 	if err := s.repo.Create(conductor); err != nil {
 		errApp := pkg.AsAppError(err)
 		if errApp != nil && errApp.Code == "duplicate_resource" {
-			// Analizar el error original para saber si es por DNI o licencia
+			// Analizar el error original para saber si es por DNI o control_acceso
 			if errApp.Err != nil {
 				errStr := errApp.Err.Error()
 				if strings.Contains(errStr, "dni") || strings.Contains(errStr, "DNI") {
 					return nil, pkg.Conflict("duplicate_resource", util.ERR_DNI_DUPLICADO)
 				}
-				if strings.Contains(errStr, "licencia") || strings.Contains(errStr, "LICENCIA") {
+				if strings.Contains(errStr, "control_acceso") || strings.Contains(errStr, "LICENCIA") {
 					return nil, pkg.Conflict("duplicate_resource", util.ERR_LICENCIA_DUPLICADA)
 				}
 			}
