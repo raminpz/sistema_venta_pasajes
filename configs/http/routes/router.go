@@ -14,10 +14,12 @@ import (
 	"gorm.io/gorm"
 
 	asientohandler "sistema_venta_pasajes/internal/asiento/handler"
+	authhandler "sistema_venta_pasajes/internal/auth/handler"
 	conductorhandler "sistema_venta_pasajes/internal/conductor/handler"
 	licenciahandler "sistema_venta_pasajes/internal/control_acceso/handler"
 	empresahandler "sistema_venta_pasajes/internal/empresa/handler"
 	encomiendahandler "sistema_venta_pasajes/internal/encomienda/handler"
+	liquidacionhandler "sistema_venta_pasajes/internal/liquidacion/handler"
 	pagohandler "sistema_venta_pasajes/internal/pago/handler"
 	pasajerohandler "sistema_venta_pasajes/internal/pasajero/handler"
 	programacionhandler "sistema_venta_pasajes/internal/programacion/handler"
@@ -31,14 +33,14 @@ import (
 
 type AppHandler func(w http.ResponseWriter, r *http.Request) error
 
-func NewRouter(db *gorm.DB, providerAPIKey string) *mux.Router {
+func NewRouter(db *gorm.DB, providerAPIKey string, jwtSecret string) *mux.Router {
 	router := mux.NewRouter()
 
-	// Middleware de logging
+	// ── Middlewares globales ──────────────────────────────────────────────────
 	router.Use(loggingMiddleware)
-
 	router.Use(middleware2.RequestID)
 	router.Use(middleware2.Recoverer)
+
 	router.NotFoundHandler = adapt(func(w http.ResponseWriter, r *http.Request) error {
 		return pkg.NotFound("route_not_found", "ruta no encontrada")
 	})
@@ -46,65 +48,64 @@ func NewRouter(db *gorm.DB, providerAPIKey string) *mux.Router {
 		return pkg.MethodNotAllowed("método HTTP no permitido para esta ruta")
 	})
 
+	// ── Health checks (públicos) ──────────────────────────────────────────────
 	router.Handle("/health", adapt(healthHandler)).Methods("GET")
 	router.Handle("/ready", adapt(readyHandler(db))).Methods("GET")
 
-	// =========================================================
-	// Control de acceso: registradas en el router principal para que
-	// - /api/v1/control-acceso/status sea público (sin control de acceso)
-	// - /api/v1/control-acceso/** requiera X-Provider-Key (sin control de acceso)
-	// ControlAccesoSistema SOLO aplica al subrouter "api" de abajo.
-	// =========================================================
-	licenciahandler.RegisterRoutes(router, db, providerAPIKey)
+	// ── Rate limiters ─────────────────────────────────────────────────────────
+	// Login: 5 intentos por minuto por IP (anti brute-force)
+	loginLimiter := middleware2.NewRateLimiter(5.0/60.0, 5)
+	// API general: 120 req/minuto por IP
+	apiLimiter := middleware2.NewRateLimiter(120.0/60.0, 20)
 
-	// =========================================================
-	// Todas las demás rutas: sujetas al control de acceso por estado del sistema
-	// =========================================================
+	// ── Estado del sistema (siempre público) ──────────────────────────────────
+	router.HandleFunc("/api/v1/control-acceso/status",
+		func(w http.ResponseWriter, r *http.Request) {
+			licenciahandler.ServeStatus(w, r, db)
+		}).Methods(http.MethodGet)
+
+	// ── Rutas públicas de autenticación (con rate limit) ─────────────────────
+	authhandler.RegisterRoutes(router, db, jwtSecret, loginLimiter)
+
+	// ── Subrouter protegido: JWT + control de acceso por estado ───────────────
 	api := router.PathPrefix("/api/v1").Subrouter()
+	api.Use(apiLimiter.Middleware())
+	api.Use(middleware2.JWTAuth(jwtSecret))
 	api.Use(middleware2.ControlAccesoSistema(db))
 
 	api.Handle("/health", adapt(healthHandler)).Methods("GET")
 	api.Handle("/ready", adapt(readyHandler(db))).Methods("GET")
 
-	proveedorsistemahandler.RegisterRoutes(api, db)
+	// ── Control de acceso del sistema: solo PROVEEDOR ─────────────────────────
+	proveedorRouter := api.PathPrefix("/control-acceso").Subrouter()
+	proveedorRouter.Use(middleware2.RequireRole("PROVEEDOR"))
+	licenciahandler.RegisterProtectedRoutes(proveedorRouter, db, providerAPIKey)
 
-	// Registro de rutas de terminal
-	terminalhandler.RegisterRoutes(api, db)
+	// ── Datos maestros: ADMIN + PROVEEDOR ─────────────────────────────────────
+	adminRouter := api.NewRoute().Subrouter()
+	adminRouter.Use(middleware2.RequireRole("ADMIN", "PROVEEDOR"))
 
-	// Registro de rutas de pasajero
-	pasajerohandler.RegisterRoutes(api, db)
+	terminalhandler.RegisterRoutes(adminRouter, db)
+	empresahandler.RegisterRoutes(adminRouter, db)
+	conductorhandler.RegisterRoutes(adminRouter, db)
+	rutahandler.RegisterRutaRoutes(adminRouter, db)
+	vehiculohandler.RegisterRoutes(adminRouter, db)
+	asientohandler.RegisterAsientoRoutes(adminRouter, db)
+	proveedorsistemahandler.RegisterRoutes(adminRouter, db)
+	usuariohandler.RegisterUsuarioHandlers(adminRouter, db)
 
-	// Registro de rutas de empresa
-	empresahandler.RegisterRoutes(api, db)
+	// ── Operaciones: ADMIN + VENDEDOR + PROVEEDOR ─────────────────────────────
+	operRouter := api.NewRoute().Subrouter()
+	operRouter.Use(middleware2.RequireRole("ADMIN", "VENDEDOR", "PROVEEDOR"))
 
-	// Registro de rutas de conductor
-	conductorhandler.RegisterRoutes(api, db)
+	pasajerohandler.RegisterRoutes(operRouter, db)
+	programacionhandler.RegisterRoutes(operRouter, db)
+	pagohandler.RegisterRoutes(operRouter, db)
+	encomiendahandler.RegisterRoutes(operRouter, db)
+	ventahandler.RegisterRoutes(operRouter, db)
+	liquidacionhandler.RegisterRoutes(operRouter, db)
 
-	// Registro de rutas de ruta
-	rutahandler.RegisterRutaRoutes(api, db)
-
-	// Registro de rutas de vehiculo
-	vehiculohandler.RegisterRoutes(api, db)
-
-	// Registro de rutas de asiento
-	asientohandler.RegisterAsientoRoutes(api, db)
-
-	// Registro de rutas de usuario
-	usuariohandler.RegisterUsuarioHandlers(api, db)
-
-	// Registro de rutas de programacion
-	programacionhandler.RegisterRoutes(api, db)
-
-	// Registro de rutas de pago
-	pagohandler.RegisterRoutes(api, db)
-
-	// Registro de rutas de encomienda
-	encomiendahandler.RegisterRoutes(api, db)
-
-	// Registro de rutas de venta
-	ventahandler.RegisterRoutes(api, db)
-
-	// Handler global para OPTIONS (preflight CORS)
+	// ── OPTIONS preflight CORS ────────────────────────────────────────────────
 	router.Methods(http.MethodOptions).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	})

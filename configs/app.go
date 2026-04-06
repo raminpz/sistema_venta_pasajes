@@ -31,7 +31,7 @@ func Run() error {
 
 	log.Printf("conexion a MySQL OK: %s:%s/%s", cfg.DB.Host, cfg.DB.Port, cfg.DB.Name)
 
-	router := routes.NewRouter(db, cfg.ProviderAPIKey)
+	router := routes.NewRouter(db, cfg.ProviderAPIKey, cfg.JWTSecret)
 
 	// Middleware CORS para desarrollo local
 	corsHandler := handlers.CORS(

@@ -14,6 +14,7 @@ type Config struct {
 	AppPort        string
 	AppEnv         string
 	ProviderAPIKey string // PROVIDER_API_KEY: clave secreta exclusiva del proveedor
+	JWTSecret      string // JWT_SECRET: clave para firmar tokens JWT (HS256)
 	DB             DBConfig
 	HTTP           HTTPConfig
 }
@@ -43,6 +44,7 @@ func Load() (Config, error) {
 		AppPort:        getEnv("APP_PORT", "8080"),
 		AppEnv:         getEnv("APP_ENV", "development"),
 		ProviderAPIKey: getEnv("PROVIDER_API_KEY", ""),
+		JWTSecret:      getEnv("JWT_SECRET", "cambiar_en_produccion_secreto_jwt_256bits"),
 		DB: DBConfig{
 			Host:            getEnv("DB_HOST", "127.0.0.1"),
 			Port:            getEnv("DB_PORT", "3306"),

@@ -2,13 +2,40 @@ package routes
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
+const testJWTSecret = "secreto_jwt_para_tests_del_router"
+
+// generarTokenAdmin crea un JWT de ADMIN para tests que requieren autenticación.
+func generarTokenAdmin() string {
+	type claims struct {
+		IDUsuario int    `json:"id_usuario"`
+		Email     string `json:"email"`
+		Rol       string `json:"rol"`
+		jwt.RegisteredClaims
+	}
+	c := &claims{
+		IDUsuario: 1,
+		Email:     "admin@test.com",
+		Rol:       "ADMIN",
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
+		},
+	}
+	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, c)
+	signed, _ := tok.SignedString([]byte(testJWTSecret))
+	return signed
+}
+
 func TestHealthRouteReturnsSuccessEnvelope(t *testing.T) {
-	router := NewRouter(nil, "")
+	router := NewRouter(nil, "", testJWTSecret)
 	request := httptest.NewRequest(http.MethodGet, "/health", nil)
 	response := httptest.NewRecorder()
 
@@ -45,7 +72,7 @@ func TestHealthRouteReturnsSuccessEnvelope(t *testing.T) {
 }
 
 func TestReadyRouteWithoutDatabaseReturnsCentralizedError(t *testing.T) {
-	router := NewRouter(nil, "")
+	router := NewRouter(nil, "", testJWTSecret)
 	request := httptest.NewRequest(http.MethodGet, "/ready", nil)
 	response := httptest.NewRecorder()
 
@@ -70,7 +97,7 @@ func TestReadyRouteWithoutDatabaseReturnsCentralizedError(t *testing.T) {
 }
 
 func TestNotFoundRouteReturnsCentralizedError(t *testing.T) {
-	router := NewRouter(nil, "")
+	router := NewRouter(nil, "", testJWTSecret)
 	request := httptest.NewRequest(http.MethodGet, "/no-existe-totalmente", nil)
 	response := httptest.NewRecorder()
 
@@ -104,7 +131,7 @@ func TestNotFoundRouteReturnsCentralizedError(t *testing.T) {
 }
 
 func TestMethodNotAllowedReturnsCentralizedError(t *testing.T) {
-	router := NewRouter(nil, "")
+	router := NewRouter(nil, "", testJWTSecret)
 	request := httptest.NewRequest(http.MethodPost, "/health", nil)
 	response := httptest.NewRecorder()
 
@@ -128,8 +155,10 @@ func TestMethodNotAllowedReturnsCentralizedError(t *testing.T) {
 }
 
 func TestProveedorSistemaDeleteRouteReturnsValidationErrorForInvalidID(t *testing.T) {
-	router := NewRouter(nil, "")
+	router := NewRouter(nil, "", testJWTSecret)
 	request := httptest.NewRequest(http.MethodDelete, "/api/v1/proveedor/abc", nil)
+	// Incluir JWT de ADMIN para que llegue hasta la validación del ID
+	request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", generarTokenAdmin()))
 	response := httptest.NewRecorder()
 
 	router.ServeHTTP(response, request)
