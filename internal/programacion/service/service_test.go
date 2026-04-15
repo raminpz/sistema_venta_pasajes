@@ -133,3 +133,14 @@ func TestServiceDeleteError(t *testing.T) {
 		t.Fatal("se esperaba error")
 	}
 }
+
+func TestServiceDeleteLiquidacionConflict(t *testing.T) {
+	// Simula FK violation de LIQUIDACION al intentar eliminar una programacion
+	mysqlFKErr := errors.New("Error 1451 (23000): Cannot delete or update a parent row: a foreign key constraint fails constraint `FK_LIQUIDACION_PROGRAMACION`")
+	repo := &fakeProgramacionRepo{deleteFn: func(int64) error { return mysqlFKErr }}
+	s := NewProgramacionService(repo)
+	err := s.Delete(1)
+	if err == nil {
+		t.Fatal("se esperaba error al eliminar programacion con liquidacion")
+	}
+}

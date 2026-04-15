@@ -33,8 +33,9 @@ import (
 
 type AppHandler func(w http.ResponseWriter, r *http.Request) error
 
-func NewRouter(db *gorm.DB, providerAPIKey string, jwtSecret string) *mux.Router {
+func NewRouter(db *gorm.DB, jwtSecret string, authDisabled ...bool) *mux.Router {
 	router := mux.NewRouter()
+	skipAuth := len(authDisabled) > 0 && authDisabled[0]
 
 	// ── Middlewares globales ──────────────────────────────────────────────────
 	router.Use(loggingMiddleware)
@@ -70,20 +71,30 @@ func NewRouter(db *gorm.DB, providerAPIKey string, jwtSecret string) *mux.Router
 	// ── Subrouter protegido: JWT + control de acceso por estado ───────────────
 	api := router.PathPrefix("/api/v1").Subrouter()
 	api.Use(apiLimiter.Middleware())
-	api.Use(middleware2.JWTAuth(jwtSecret))
-	api.Use(middleware2.ControlAccesoSistema(db))
+
+	if skipAuth {
+		// Modo desarrollo: se omite JWT y roles, se inyecta rol PROVEEDOR ficticio
+		api.Use(middleware2.DevBypassAuth)
+	} else {
+		api.Use(middleware2.JWTAuth(jwtSecret))
+		api.Use(middleware2.ControlAccesoSistema(db))
+	}
 
 	api.Handle("/health", adapt(healthHandler)).Methods("GET")
 	api.Handle("/ready", adapt(readyHandler(db))).Methods("GET")
 
 	// ── Control de acceso del sistema: solo PROVEEDOR ─────────────────────────
 	proveedorRouter := api.PathPrefix("/control-acceso").Subrouter()
-	proveedorRouter.Use(middleware2.RequireRole("PROVEEDOR"))
-	licenciahandler.RegisterProtectedRoutes(proveedorRouter, db, providerAPIKey)
+	if !skipAuth {
+		proveedorRouter.Use(middleware2.RequireRole("PROVEEDOR"))
+	}
+	licenciahandler.RegisterProtectedRoutes(proveedorRouter, db)
 
 	// ── Datos maestros: ADMIN + PROVEEDOR ─────────────────────────────────────
 	adminRouter := api.NewRoute().Subrouter()
-	adminRouter.Use(middleware2.RequireRole("ADMIN", "PROVEEDOR"))
+	if !skipAuth {
+		adminRouter.Use(middleware2.RequireRole("ADMIN", "PROVEEDOR"))
+	}
 
 	terminalhandler.RegisterRoutes(adminRouter, db)
 	empresahandler.RegisterRoutes(adminRouter, db)
@@ -96,7 +107,9 @@ func NewRouter(db *gorm.DB, providerAPIKey string, jwtSecret string) *mux.Router
 
 	// ── Operaciones: ADMIN + VENDEDOR + PROVEEDOR ─────────────────────────────
 	operRouter := api.NewRoute().Subrouter()
-	operRouter.Use(middleware2.RequireRole("ADMIN", "VENDEDOR", "PROVEEDOR"))
+	if !skipAuth {
+		operRouter.Use(middleware2.RequireRole("ADMIN", "VENDEDOR", "PROVEEDOR"))
+	}
 
 	pasajerohandler.RegisterRoutes(operRouter, db)
 	programacionhandler.RegisterRoutes(operRouter, db)
@@ -117,12 +130,12 @@ func NewRouter(db *gorm.DB, providerAPIKey string, jwtSecret string) *mux.Router
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		requestID := r.Context().Value("request_id")
-		if requestID == nil {
+		requestID := pkg.RequestIDFromContext(r.Context())
+		if requestID == "" {
 			requestID = "-"
 		}
 		logPrefix := func() string {
-			return "[REQUEST_ID=" + requestID.(string) + "]"
+			return "[REQUEST_ID=" + requestID + "]"
 		}
 
 		log.Printf("%s %s %s %s", logPrefix(), r.Method, r.RequestURI, r.RemoteAddr)
@@ -144,8 +157,8 @@ func loggingMiddleware(next http.Handler) http.Handler {
 
 func adapt(handler AppHandler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestID := r.Context().Value("request_id")
-		if requestID == nil {
+		requestID := pkg.RequestIDFromContext(r.Context())
+		if requestID == "" {
 			requestID = "-"
 		}
 		if err := handler(w, r); err != nil {

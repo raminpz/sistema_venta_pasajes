@@ -35,11 +35,18 @@ func (h *VehiculoHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *VehiculoHandler) Update(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, err := strconv.ParseInt(vars["id"], 10, 64)
+	if err != nil || id <= 0 {
+		pkg.Error(w, pkg.BadRequest("invalid_id", util.ERR_INVALID_ID))
+		return
+	}
 	var in input.UpdateVehiculoInput
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 		pkg.Error(w, pkg.BadRequest("invalid_json", util.ERR_INVALID_JSON).WithCause(err))
 		return
 	}
+	in.IDVehiculo = id
 	vehiculo, err := h.service.Update(in)
 	if err != nil {
 		pkg.Error(w, err)
@@ -49,9 +56,9 @@ func (h *VehiculoHandler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *VehiculoHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	idStr := r.URL.Query().Get("id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
+	vars := mux.Vars(r)
+	id, err := strconv.ParseInt(vars["id"], 10, 64)
+	if err != nil || id <= 0 {
 		pkg.Error(w, pkg.BadRequest("invalid_id", util.ERR_INVALID_ID))
 		return
 	}

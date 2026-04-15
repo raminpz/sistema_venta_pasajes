@@ -48,7 +48,14 @@ func (r *asientoRepository) Update(asiento *domain.Asiento) error {
 }
 
 func (r *asientoRepository) Delete(id int64) error {
-	return r.db.Delete(&domain.Asiento{}, id).Error
+	res := r.db.Delete(&domain.Asiento{}, "ID_ASIENTO = ?", id)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *asientoRepository) CambiarEstado(id int64, estado string) error {
@@ -56,3 +63,4 @@ func (r *asientoRepository) CambiarEstado(id int64, estado string) error {
 		Where("ID_ASIENTO = ?", id).
 		Update("ESTADO", estado).Error
 }
+

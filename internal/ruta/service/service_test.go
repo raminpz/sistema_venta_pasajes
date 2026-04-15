@@ -10,11 +10,11 @@ import (
 )
 
 type mockRepo struct {
-	CreateFn  func(ruta *domain.Ruta) error
-	GetByIDFn func(id int) (*domain.Ruta, error)
-	UpdateFn  func(ruta *domain.Ruta) error
-	DeleteFn  func(id int) error
-	ListFn    func() ([]domain.Ruta, error)
+	CreateFn          func(ruta *domain.Ruta) error
+	GetByIDFn         func(id int) (*domain.Ruta, error)
+	UpdateFn          func(ruta *domain.Ruta) error
+	DeleteFn          func(id int) error
+	ListFn            func() ([]domain.Ruta, error)
 }
 
 func (m *mockRepo) Create(ruta *domain.Ruta) error       { return m.CreateFn(ruta) }
@@ -85,6 +85,9 @@ func TestService_Update(t *testing.T) {
 
 func TestService_Delete(t *testing.T) {
 	repo := &mockRepo{
+		GetByIDFn: func(id int) (*domain.Ruta, error) {
+			return &domain.Ruta{IDRuta: id}, nil
+		},
 		DeleteFn: func(id int) error {
 			if id != 1 {
 				return errors.New("delete failed")
@@ -95,6 +98,22 @@ func TestService_Delete(t *testing.T) {
 	svc := New(repo)
 	if err := svc.Delete(context.Background(), 1); err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestService_Delete_DeleteError(t *testing.T) {
+	repo := &mockRepo{
+		GetByIDFn: func(id int) (*domain.Ruta, error) {
+			return &domain.Ruta{IDRuta: id}, nil
+		},
+		DeleteFn: func(id int) error {
+			return errors.New("fk constraint")
+		},
+	}
+	svc := New(repo)
+	err := svc.Delete(context.Background(), 1)
+	if err == nil {
+		t.Fatal("expected delete error")
 	}
 }
 

@@ -145,8 +145,16 @@ func (s *VentaServiceImpl) Delete(id int64) error {
 	if id <= 0 {
 		return pkg.BadRequest(util.ERR_CODE_INVALID_ID, util.MSG_VENTA_NOT_FOUND)
 	}
-	err := s.repo.Delete(id)
+	_, err := s.repo.GetByID(id)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return pkg.NotFound(util.ERR_CODE_NOT_FOUND, util.MSG_VENTA_NOT_FOUND)
+		}
+		return pkg.NewAppError(http.StatusInternalServerError, util.ERR_CODE_DELETE, util.MSG_VENTA_DELETE_ERROR).WithCause(err)
+	}
+
+
+	if err := s.repo.Delete(id); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return pkg.NotFound(util.ERR_CODE_NOT_FOUND, util.MSG_VENTA_NOT_FOUND)
 		}

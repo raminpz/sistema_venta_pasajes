@@ -61,6 +61,7 @@ func (m *mockVentaRepository) NextCorrelativo(serie string) (uint, error) {
 	return 1, nil
 }
 
+
 // ---------------------------------------------------------------------------
 // Tests Create
 // ---------------------------------------------------------------------------

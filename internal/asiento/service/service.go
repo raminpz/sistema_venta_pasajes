@@ -1,10 +1,14 @@
 package service
 
 import (
+	"errors"
 	"sistema_venta_pasajes/internal/asiento/domain"
 	"sistema_venta_pasajes/internal/asiento/input"
 	"sistema_venta_pasajes/internal/asiento/repository"
 	"sistema_venta_pasajes/internal/asiento/util"
+	"sistema_venta_pasajes/pkg"
+
+	"gorm.io/gorm"
 )
 
 type AsientoService interface {
@@ -62,7 +66,20 @@ func (s *asientoService) Update(id int64, in input.UpdateAsientoInput) error {
 }
 
 func (s *asientoService) Delete(id int64) error {
-	return s.repo.Delete(id)
+	_, err := s.repo.GetByID(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return pkg.NotFound(util.ERR_CODE_NOT_FOUND, util.MSG_SEAT_NOT_FOUND)
+		}
+		return pkg.Internal(util.MSG_SEAT_DELETE_ERROR, err)
+	}
+	if err := s.repo.Delete(id); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return pkg.NotFound(util.ERR_CODE_NOT_FOUND, util.MSG_SEAT_NOT_FOUND)
+		}
+		return pkg.Internal(util.MSG_SEAT_DELETE_ERROR, err)
+	}
+	return nil
 }
 
 func (s *asientoService) CambiarEstado(id int64, estado string) error {

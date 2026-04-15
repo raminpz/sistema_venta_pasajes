@@ -35,7 +35,7 @@ func generarTokenAdmin() string {
 }
 
 func TestHealthRouteReturnsSuccessEnvelope(t *testing.T) {
-	router := NewRouter(nil, "", testJWTSecret)
+	router := NewRouter(nil, testJWTSecret)
 	request := httptest.NewRequest(http.MethodGet, "/health", nil)
 	response := httptest.NewRecorder()
 
@@ -72,7 +72,7 @@ func TestHealthRouteReturnsSuccessEnvelope(t *testing.T) {
 }
 
 func TestReadyRouteWithoutDatabaseReturnsCentralizedError(t *testing.T) {
-	router := NewRouter(nil, "", testJWTSecret)
+	router := NewRouter(nil, testJWTSecret)
 	request := httptest.NewRequest(http.MethodGet, "/ready", nil)
 	response := httptest.NewRecorder()
 
@@ -97,7 +97,7 @@ func TestReadyRouteWithoutDatabaseReturnsCentralizedError(t *testing.T) {
 }
 
 func TestNotFoundRouteReturnsCentralizedError(t *testing.T) {
-	router := NewRouter(nil, "", testJWTSecret)
+	router := NewRouter(nil, testJWTSecret)
 	request := httptest.NewRequest(http.MethodGet, "/no-existe-totalmente", nil)
 	response := httptest.NewRecorder()
 
@@ -131,7 +131,7 @@ func TestNotFoundRouteReturnsCentralizedError(t *testing.T) {
 }
 
 func TestMethodNotAllowedReturnsCentralizedError(t *testing.T) {
-	router := NewRouter(nil, "", testJWTSecret)
+	router := NewRouter(nil, testJWTSecret)
 	request := httptest.NewRequest(http.MethodPost, "/health", nil)
 	response := httptest.NewRecorder()
 
@@ -155,7 +155,7 @@ func TestMethodNotAllowedReturnsCentralizedError(t *testing.T) {
 }
 
 func TestProveedorSistemaDeleteRouteReturnsValidationErrorForInvalidID(t *testing.T) {
-	router := NewRouter(nil, "", testJWTSecret)
+	router := NewRouter(nil, testJWTSecret)
 	request := httptest.NewRequest(http.MethodDelete, "/api/v1/proveedor/abc", nil)
 	// Incluir JWT de ADMIN para que llegue hasta la validación del ID
 	request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", generarTokenAdmin()))

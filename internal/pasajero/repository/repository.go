@@ -40,8 +40,14 @@ func (r *pasajeroRepository) Update(pasajero *domain.Pasajero) error {
 }
 
 func (r *pasajeroRepository) Delete(id int64) error {
-	// Borrado físico
-	return r.db.Delete(&domain.Pasajero{}, "ID_PASAJERO = ?", id).Error
+	res := r.db.Delete(&domain.Pasajero{}, "ID_PASAJERO = ?", id)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *pasajeroRepository) List(page, size int) ([]domain.Pasajero, int, error) {
@@ -53,7 +59,7 @@ func (r *pasajeroRepository) List(page, size int) ([]domain.Pasajero, int, error
 	return pasajeros, int(total), db.Error
 }
 
-// Search permite buscar pasajeros por nombre, apellido o DNI con paginación
+// Search permite buscar pasajeros por nombre, apellido o DNI
 func (r *pasajeroRepository) Search(query string) ([]domain.Pasajero, int, error) {
 	var pasajeros []domain.Pasajero
 	var total int64
@@ -63,3 +69,5 @@ func (r *pasajeroRepository) Search(query string) ([]domain.Pasajero, int, error
 	db.Order("ID_PASAJERO ASC").Find(&pasajeros)
 	return pasajeros, int(total), db.Error
 }
+
+

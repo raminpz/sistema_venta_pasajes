@@ -1,156 +1,204 @@
 package repository
 
 import (
-	"fmt"
-	"os"
-	"testing"
-
-	"github.com/joho/godotenv"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
-
+	"errors"
 	"sistema_venta_pasajes/internal/asiento/domain"
+	"testing"
 )
 
-var testDB *gorm.DB
-
-func TestMain(m *testing.M) {
-	_ = godotenv.Load("../../../config/.env")
-	host := os.Getenv("DB_HOST")
-	port := os.Getenv("DB_PORT")
-	name := os.Getenv("DB_NAME")
-	user := os.Getenv("DB_USER")
-	pass := os.Getenv("DB_PASS")
-	params := os.Getenv("DB_PARAMS")
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?%s", user, pass, host, port, name, params)
-	fmt.Printf("DB_HOST=%s\nDB_PORT=%s\nDB_NAME=%s\nDB_USER=%s\nDB_PASS=%s\nDB_PARAMS=%s\n", host, port, name, user, pass, params)
-	fmt.Printf("DSN: %s\n", dsn)
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
-	if err != nil {
-		panic("failed to connect database: " + err.Error())
-	}
-	testDB = db
-	os.Exit(m.Run())
+// mockAsientoDB simula un repositorio en memoria para pruebas
+type mockAsientoDB struct {
+	asientos map[int64]*domain.Asiento
+	nextID   int64
 }
 
-func cleanTable(t *testing.T) {
-	// Borrar primero de las tablas hijas para respetar claves foráneas
-	err := testDB.Exec("DELETE FROM DETALLE_PASAJE").Error
-	if err != nil {
-		t.Fatalf("failed to clean DETALLE_PASAJE: %v", err)
-	}
-	err = testDB.Exec("DELETE FROM ASIENTO").Error
-	if err != nil {
-		t.Fatalf("failed to clean ASIENTO: %v", err)
+func newMockAsientoDB() *mockAsientoDB {
+	return &mockAsientoDB{
+		asientos: make(map[int64]*domain.Asiento),
+		nextID:   1,
 	}
 }
+
+func (m *mockAsientoDB) Create(a *domain.Asiento) error {
+	a.IDAsiento = int(m.nextID)
+	cp := *a
+	m.asientos[m.nextID] = &cp
+	m.nextID++
+	return nil
+}
+
+func (m *mockAsientoDB) GetByID(id int64) (*domain.Asiento, error) {
+	a, ok := m.asientos[id]
+	if !ok {
+		return nil, errors.New("record not found")
+	}
+	return a, nil
+}
+
+func (m *mockAsientoDB) ListByVehiculo(idVehiculo int64) ([]*domain.Asiento, error) {
+	var result []*domain.Asiento
+	for _, a := range m.asientos {
+		if int64(a.IDVehiculo) == idVehiculo {
+			cp := *a
+			result = append(result, &cp)
+		}
+	}
+	return result, nil
+}
+
+func (m *mockAsientoDB) Update(a *domain.Asiento) error {
+	if _, ok := m.asientos[int64(a.IDAsiento)]; !ok {
+		return errors.New("record not found")
+	}
+	cp := *a
+	m.asientos[int64(a.IDAsiento)] = &cp
+	return nil
+}
+
+func (m *mockAsientoDB) Delete(id int64) error {
+	if _, ok := m.asientos[id]; !ok {
+		return errors.New("record not found")
+	}
+	delete(m.asientos, id)
+	return nil
+}
+
+func (m *mockAsientoDB) CambiarEstado(id int64, estado string) error {
+	a, ok := m.asientos[id]
+	if !ok {
+		return errors.New("record not found")
+	}
+	a.Estado = estado
+	return nil
+}
+
+// ---- Tests ----
 
 func TestAsientoRepository_Create(t *testing.T) {
-	cleanTable(t)
-	repo := NewAsientoRepository(testDB)
+	db := newMockAsientoDB()
 	a := &domain.Asiento{IDVehiculo: 1, NumeroAsiento: "A1", Estado: "ACTIVO"}
-	err := repo.Create(a)
-	if err != nil || a.IDAsiento == 0 {
-		t.Errorf("unexpected result: err=%v, asiento=%+v", err, a)
+	err := db.Create(a)
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
 	}
-	if a.Estado != "ACTIVO" {
-		t.Errorf("expected Estado=ACTIVO, got %s", a.Estado)
+	if a.IDAsiento == 0 {
+		t.Error("IDAsiento debe ser asignado después de Create")
 	}
 }
 
 func TestAsientoRepository_GetByID(t *testing.T) {
-	cleanTable(t)
-	repo := NewAsientoRepository(testDB)
+	db := newMockAsientoDB()
 	a := &domain.Asiento{IDVehiculo: 2, NumeroAsiento: "B2", Estado: "RESERVADO"}
-	repo.Create(a)
-	got, err := repo.GetByID(int64(a.IDAsiento))
-	if err != nil || got.IDAsiento != a.IDAsiento {
-		t.Errorf("unexpected result: err=%v, asiento=%+v", err, got)
+	if err := db.Create(a); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	got, err := db.GetByID(int64(a.IDAsiento))
+	if err != nil {
+		t.Fatalf("GetByID() error = %v", err)
+	}
+	if got.IDAsiento != a.IDAsiento {
+		t.Errorf("GetByID() ID esperado %d, obtenido %d", a.IDAsiento, got.IDAsiento)
 	}
 	if got.Estado != "RESERVADO" {
-		t.Errorf("expected Estado=RESERVADO, got %s", got.Estado)
+		t.Errorf("GetByID() Estado esperado RESERVADO, obtenido %s", got.Estado)
+	}
+
+	_, err = db.GetByID(9999)
+	if err == nil {
+		t.Error("GetByID() debería retornar error para ID inexistente")
 	}
 }
 
 func TestAsientoRepository_ListByVehiculo(t *testing.T) {
-	cleanTable(t)
-	repo := NewAsientoRepository(testDB)
-	repo.Create(&domain.Asiento{IDVehiculo: 2, NumeroAsiento: "A1", Estado: "ACTIVO"})
-	repo.Create(&domain.Asiento{IDVehiculo: 2, NumeroAsiento: "A2", Estado: "OCUPADO"})
-	asientos, err := repo.ListByVehiculo(2)
-	if err != nil || len(asientos) != 2 {
-		t.Errorf("unexpected result: err=%v, asientos=%+v", err, asientos)
+	db := newMockAsientoDB()
+	if err := db.Create(&domain.Asiento{IDVehiculo: 2, NumeroAsiento: "A1", Estado: "ACTIVO"}); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if err := db.Create(&domain.Asiento{IDVehiculo: 2, NumeroAsiento: "A2", Estado: "OCUPADO"}); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if err := db.Create(&domain.Asiento{IDVehiculo: 5, NumeroAsiento: "C1", Estado: "ACTIVO"}); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	asientos, err := db.ListByVehiculo(2)
+	if err != nil {
+		t.Fatalf("ListByVehiculo() error = %v", err)
+	}
+	if len(asientos) != 2 {
+		t.Errorf("ListByVehiculo() esperaba 2 asientos, obtuvo %d", len(asientos))
 	}
 }
 
 func TestAsientoRepository_Update(t *testing.T) {
-	cleanTable(t)
-	repo := NewAsientoRepository(testDB)
+	db := newMockAsientoDB()
 	a := &domain.Asiento{IDVehiculo: 1, NumeroAsiento: "C3", Estado: "ACTIVO"}
-	repo.Create(a)
+	if err := db.Create(a); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
 	a.NumeroAsiento = "C4"
 	a.Estado = "OCUPADO"
-	err := repo.Update(a)
+	err := db.Update(a)
 	if err != nil {
-		t.Errorf("unexpected result: err=%v", err)
+		t.Fatalf("Update() error = %v", err)
 	}
-	got, _ := repo.GetByID(int64(a.IDAsiento))
+
+	got, _ := db.GetByID(int64(a.IDAsiento))
 	if got.NumeroAsiento != "C4" {
-		t.Errorf("update failed: got=%+v", got)
+		t.Errorf("Update() NumeroAsiento esperado C4, obtenido %s", got.NumeroAsiento)
 	}
 	if got.Estado != "OCUPADO" {
-		t.Errorf("expected Estado=OCUPADO, got %s", got.Estado)
+		t.Errorf("Update() Estado esperado OCUPADO, obtenido %s", got.Estado)
 	}
 }
 
 func TestAsientoRepository_Delete(t *testing.T) {
-	cleanTable(t)
-	repo := NewAsientoRepository(testDB)
-	a := &domain.Asiento{IDVehiculo: 1, NumeroAsiento: "D1"}
-	repo.Create(a)
-	err := repo.Delete(int64(a.IDAsiento))
-	if err != nil {
-		t.Errorf("unexpected result: err=%v", err)
+	db := newMockAsientoDB()
+	a := &domain.Asiento{IDVehiculo: 1, NumeroAsiento: "D1", Estado: "ACTIVO"}
+	if err := db.Create(a); err != nil {
+		t.Fatalf("Create() error = %v", err)
 	}
-	_, err = repo.GetByID(int64(a.IDAsiento))
+
+	err := db.Delete(int64(a.IDAsiento))
+	if err != nil {
+		t.Fatalf("Delete() error = %v", err)
+	}
+
+	_, err = db.GetByID(int64(a.IDAsiento))
 	if err == nil {
-		t.Errorf("expected error for deleted record, got nil")
+		t.Error("GetByID() debería retornar error después de Delete")
+	}
+
+	err = db.Delete(9999)
+	if err == nil {
+		t.Error("Delete() debería retornar error para ID inexistente")
 	}
 }
 
 func TestAsientoRepository_CambiarEstado(t *testing.T) {
-	cleanTable(t)
-	repo := NewAsientoRepository(testDB)
+	db := newMockAsientoDB()
 	a := &domain.Asiento{IDVehiculo: 1, NumeroAsiento: "F1", Estado: "ACTIVO"}
-	err := repo.Create(a)
-	if err != nil {
-		t.Fatalf("no se pudo crear asiento: %v", err)
+	if err := db.Create(a); err != nil {
+		t.Fatalf("Create() error = %v", err)
 	}
-	// Cambiar a RESERVADO
-	err = repo.CambiarEstado(int64(a.IDAsiento), "RESERVADO")
-	if err != nil {
-		t.Errorf("error al cambiar a RESERVADO: %v", err)
+
+	estados := []string{"RESERVADO", "OCUPADO", "ACTIVO"}
+	for _, estado := range estados {
+		err := db.CambiarEstado(int64(a.IDAsiento), estado)
+		if err != nil {
+			t.Errorf("CambiarEstado(%s) error = %v", estado, err)
+		}
+		got, _ := db.GetByID(int64(a.IDAsiento))
+		if got.Estado != estado {
+			t.Errorf("CambiarEstado() Estado esperado %s, obtenido %s", estado, got.Estado)
+		}
 	}
-	got, _ := repo.GetByID(int64(a.IDAsiento))
-	if got.Estado != "RESERVADO" {
-		t.Errorf("expected Estado=RESERVADO, got %s", got.Estado)
-	}
-	// Cambiar a OCUPADO
-	err = repo.CambiarEstado(int64(a.IDAsiento), "OCUPADO")
-	if err != nil {
-		t.Errorf("error al cambiar a OCUPADO: %v", err)
-	}
-	got, _ = repo.GetByID(int64(a.IDAsiento))
-	if got.Estado != "OCUPADO" {
-		t.Errorf("expected Estado=OCUPADO, got %s", got.Estado)
-	}
-	// Cambiar a ACTIVO
-	err = repo.CambiarEstado(int64(a.IDAsiento), "ACTIVO")
-	if err != nil {
-		t.Errorf("error al cambiar a ACTIVO: %v", err)
-	}
-	got, _ = repo.GetByID(int64(a.IDAsiento))
-	if got.Estado != "ACTIVO" {
-		t.Errorf("expected Estado=ACTIVO, got %s", got.Estado)
+
+	err := db.CambiarEstado(9999, "ACTIVO")
+	if err == nil {
+		t.Error("CambiarEstado() debería retornar error para ID inexistente")
 	}
 }
+

@@ -1,0 +1,16 @@
+# Entorno local
+.env
+.env.local
+
+# Binarios
+*.exe
+*.out
+
+# Cobertura
+coverage
+*.cov
+
+# IDE
+.idea/
+.vscode/
+

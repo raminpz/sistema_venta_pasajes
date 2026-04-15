@@ -9,6 +9,7 @@ import (
 type contextKey string
 
 const requestIDContextKey contextKey = "request_id"
+const actorUserIDContextKey contextKey = "actor_user_id"
 
 type Response struct {
 	Code    int    `json:"code"`
@@ -26,6 +27,26 @@ type ErrorResponse struct {
 
 func WithRequestID(ctx context.Context, requestID string) context.Context {
 	return context.WithValue(ctx, requestIDContextKey, requestID)
+}
+
+func RequestIDFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	value, _ := ctx.Value(requestIDContextKey).(string)
+	return value
+}
+
+func WithActorUserID(ctx context.Context, userID int64) context.Context {
+	return context.WithValue(ctx, actorUserIDContextKey, userID)
+}
+
+func ActorUserIDFromContext(ctx context.Context) (int64, bool) {
+	if ctx == nil {
+		return 0, false
+	}
+	value, ok := ctx.Value(actorUserIDContextKey).(int64)
+	return value, ok
 }
 
 func WriteJSON(w http.ResponseWriter, status int, payload any) {

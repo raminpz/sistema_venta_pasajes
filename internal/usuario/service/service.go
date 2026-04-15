@@ -112,7 +112,17 @@ func (s *usuarioService) Update(id int, in input.UsuarioUpdateInput) (*input.Usu
 
 func (s *usuarioService) Delete(id int) error {
 	ctx := context.Background()
-	return s.repo.Delete(ctx, id)
+	usuario, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return errors.New(util.MSG_USER_NOT_FOUND)
+	}
+	if usuario == nil {
+		return errors.New(util.MSG_USER_NOT_FOUND)
+	}
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return pkg.Internal(util.MSG_DELETE_ERROR, err)
+	}
+	return nil
 }
 
 func (s *usuarioService) GetByID(id int) (*input.UsuarioOutput, error) {

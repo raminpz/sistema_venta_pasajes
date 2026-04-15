@@ -2,11 +2,14 @@ package service
 
 import (
 	"context"
+	"errors"
 	"sistema_venta_pasajes/internal/ruta/domain"
 	"sistema_venta_pasajes/internal/ruta/input"
 	"sistema_venta_pasajes/internal/ruta/repository"
 	"sistema_venta_pasajes/internal/ruta/util"
 	"sistema_venta_pasajes/pkg"
+
+	"gorm.io/gorm"
 )
 
 type Service interface {
@@ -70,5 +73,18 @@ func (s *service) Update(ctx context.Context, id int, in input.UpdateRutaInput) 
 }
 
 func (s *service) Delete(ctx context.Context, id int) error {
-	return s.repo.Delete(id)
+	_, err := s.repo.GetByID(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return pkg.NotFound(util.ERR_CODE_NOT_FOUND, util.MSG_ROUTE_NOT_FOUND)
+		}
+		return pkg.Internal(util.MSG_ROUTE_DELETE_ERROR, err)
+	}
+	if err := s.repo.Delete(id); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return pkg.NotFound(util.ERR_CODE_NOT_FOUND, util.MSG_ROUTE_NOT_FOUND)
+		}
+		return pkg.Internal(util.MSG_ROUTE_DELETE_ERROR, err)
+	}
+	return nil
 }

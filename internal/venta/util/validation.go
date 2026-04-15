@@ -3,11 +3,8 @@ package util
 import (
 	"errors"
 	"net/http"
-	"strings"
 
 	"sistema_venta_pasajes/pkg"
-
-	mysqlDriver "github.com/go-sql-driver/mysql"
 )
 
 // ValidarCreateInput valida los campos obligatorios del input de creación.
@@ -59,41 +56,18 @@ func SerieFromTipoComprobante(idTipo int64) (string, error) {
 
 // ParseDBError interpreta errores MySQL de VENTA con mensajes claros.
 func ParseDBError(err error, errCode, genericMsg string) error {
-	if err == nil {
-		return nil
+	fkMessages := map[string]string{
+		"FK_VENTA_PROGRAMACION":     MSG_VENTA_FK_PROGRAMACION,
+		"FK_VENTA_PASAJERO":         MSG_VENTA_FK_PASAJERO,
+		"FK_VENTA_ASIENTO":          MSG_VENTA_FK_ASIENTO,
+		"FK_VENTA_USUARIO":          MSG_VENTA_FK_USUARIO,
+		"FK_VENTA_TIPO_COMPROBANTE": MSG_VENTA_FK_COMPROBANTE,
 	}
-	var mysqlErr *mysqlDriver.MySQLError
-	if errors.As(err, &mysqlErr) {
-		text := strings.ToUpper(mysqlErr.Message)
-		switch mysqlErr.Number {
-		case 1062:
-			if strings.Contains(text, "UQ_VENTA_PROG_ASIENTO") {
-				return pkg.Conflict(ERR_CODE_DUPLICATE, MSG_VENTA_DUPLICATE_ASIENTO)
-			}
-			if strings.Contains(text, "UQ_VENTA_PROG_PASAJERO") {
-				return pkg.Conflict(ERR_CODE_DUPLICATE, MSG_VENTA_DUPLICATE_PASAJERO)
-			}
-			return pkg.Conflict(ERR_CODE_DUPLICATE, "La venta ya existe")
-		case 1452, 1451:
-			if strings.Contains(text, "FK_VENTA_PROGRAMACION") {
-				return pkg.Conflict(errCode, MSG_VENTA_FK_PROGRAMACION)
-			}
-			if strings.Contains(text, "FK_VENTA_PASAJERO") {
-				return pkg.Conflict(errCode, MSG_VENTA_FK_PASAJERO)
-			}
-			if strings.Contains(text, "FK_VENTA_ASIENTO") {
-				return pkg.Conflict(errCode, MSG_VENTA_FK_ASIENTO)
-			}
-			if strings.Contains(text, "FK_VENTA_USUARIO") {
-				return pkg.Conflict(errCode, MSG_VENTA_FK_USUARIO)
-			}
-			if strings.Contains(text, "FK_VENTA_TIPO_COMPROBANTE") {
-				return pkg.Conflict(errCode, MSG_VENTA_FK_COMPROBANTE)
-			}
-			return pkg.Conflict(errCode, "Restriccion de integridad referencial")
-		}
+	duplicateMessages := map[string]string{
+		"UQ_VENTA_PROG_ASIENTO":  MSG_VENTA_DUPLICATE_ASIENTO,
+		"UQ_VENTA_PROG_PASAJERO": MSG_VENTA_DUPLICATE_PASAJERO,
 	}
-	return pkg.NewAppError(http.StatusInternalServerError, errCode, genericMsg).WithCause(err)
+	return pkg.ParseDBError(err, errCode, genericMsg, fkMessages, duplicateMessages)
 }
 
 func ParsePaginationParams(r *http.Request) (int, int, error) {

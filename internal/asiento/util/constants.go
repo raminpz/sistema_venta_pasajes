@@ -13,4 +13,9 @@ const (
 	MSG_SEAT_DELETED        = "Asiento eliminado correctamente"
 	MSG_SEAT_STATUS_UPDATED = "Estado de asiento actualizado"
 	MSG_OK                  = "OK"
+	MSG_SEAT_NOT_FOUND      = "Asiento no encontrado"
+	MSG_SEAT_DELETE_ERROR   = "Error al eliminar asiento"
+
+	ERR_CODE_NOT_FOUND = "not_found"
+	ERR_CODE_DELETE    = "delete_error"
 )

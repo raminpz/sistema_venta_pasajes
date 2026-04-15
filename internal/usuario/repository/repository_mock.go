@@ -80,4 +80,5 @@ func (m *UsuarioRepositoryMock) List(ctx context.Context, filtro map[string]inte
 	return usuarios[offset:end], total, nil
 }
 
+
 var ErrNotFound = errors.New("usuario no encontrado")

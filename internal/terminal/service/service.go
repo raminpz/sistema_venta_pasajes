@@ -1,11 +1,14 @@
 package service
 
 import (
+	"errors"
 	"sistema_venta_pasajes/internal/terminal/domain"
 	input "sistema_venta_pasajes/internal/terminal/input"
 	"sistema_venta_pasajes/internal/terminal/repository"
 	"sistema_venta_pasajes/internal/terminal/util"
 	"sistema_venta_pasajes/pkg"
+
+	"gorm.io/gorm"
 )
 
 type TerminalService interface {
@@ -115,7 +118,20 @@ func validateTerminalUpdateInput(in input.UpdateTerminalInput) error {
 }
 
 func (s *terminalService) Delete(id int64) error {
-	return s.repo.Delete(id)
+	_, err := s.repo.GetByID(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return pkg.NotFound(util.ERR_CODE_NOT_FOUND, util.MSG_TERMINAL_NOT_FOUND)
+		}
+		return pkg.Internal(util.MSG_TERMINAL_DELETE_ERROR, err)
+	}
+	if err := s.repo.Delete(id); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return pkg.NotFound(util.ERR_CODE_NOT_FOUND, util.MSG_TERMINAL_NOT_FOUND)
+		}
+		return pkg.Internal(util.MSG_TERMINAL_DELETE_ERROR, err)
+	}
+	return nil
 }
 
 func (s *terminalService) List() ([]domain.Terminal, error) {

@@ -4,10 +4,11 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"sistema_venta_pasajes/internal/terminal/domain"
 	"sistema_venta_pasajes/internal/terminal/input"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 type mockRepo struct {
@@ -56,6 +57,26 @@ func TestGetByID_NotFound(t *testing.T) {
 	svc := NewTerminalService(repo)
 	repo.On("GetByID", int64(1)).Return(&domain.Terminal{}, errors.New("not found"))
 	_, err := svc.GetByID(1)
+	assert.Error(t, err)
+}
+
+func TestDeleteTerminal_OK(t *testing.T) {
+	repo := new(mockRepo)
+	svc := NewTerminalService(repo)
+	terminal := &domain.Terminal{IDTerminal: 1}
+	repo.On("GetByID", int64(1)).Return(terminal, nil)
+	repo.On("Delete", int64(1)).Return(nil)
+	err := svc.Delete(1)
+	assert.NoError(t, err)
+}
+
+func TestDeleteTerminal_DeleteError(t *testing.T) {
+	repo := new(mockRepo)
+	svc := NewTerminalService(repo)
+	terminal := &domain.Terminal{IDTerminal: 2}
+	repo.On("GetByID", int64(2)).Return(terminal, nil)
+	repo.On("Delete", int64(2)).Return(errors.New("fk constraint"))
+	err := svc.Delete(2)
 	assert.Error(t, err)
 }
 

@@ -8,10 +8,11 @@ import (
 	"sistema_venta_pasajes/internal/vehiculo/util"
 	"testing"
 
+	vehiculoinput "sistema_venta_pasajes/internal/vehiculo/input"
+
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	vehiculoinput "sistema_venta_pasajes/internal/vehiculo/input"
 )
 
 type MockVehiculoService struct {
@@ -59,7 +60,6 @@ func TestVehiculoHandler_GetByID(t *testing.T) {
 	mockService.On("GetByID", int64(5)).Return(output, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/vehiculo/5", nil)
-	// Usar mux para setear el path param
 	r := mux.NewRouter()
 	r.HandleFunc("/vehiculo/{id}", handler.GetByID).Methods("GET")
 	w := httptest.NewRecorder()
@@ -70,4 +70,55 @@ func TestVehiculoHandler_GetByID(t *testing.T) {
 	json.Unmarshal(w.Body.Bytes(), &resp)
 	assert.Equal(t, util.MSG_GET, resp["message"])
 	assert.NotNil(t, resp["data"])
+}
+
+func TestVehiculoHandler_Delete(t *testing.T) {
+	mockService := new(MockVehiculoService)
+	handler := NewVehiculoHandler(mockService)
+	mockService.On("Delete", int64(19)).Return(nil)
+
+	req := httptest.NewRequest(http.MethodDelete, "/vehiculo/19", nil)
+	r := mux.NewRouter()
+	r.HandleFunc("/vehiculo/{id}", handler.Delete).Methods("DELETE")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	var resp map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	assert.Equal(t, util.MSG_DELETED, resp["message"])
+}
+
+func TestVehiculoHandler_Delete_InvalidID(t *testing.T) {
+	mockService := new(MockVehiculoService)
+	handler := NewVehiculoHandler(mockService)
+
+	req := httptest.NewRequest(http.MethodDelete, "/vehiculo/abc", nil)
+	r := mux.NewRouter()
+	r.HandleFunc("/vehiculo/{id}", handler.Delete).Methods("DELETE")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestVehiculoHandler_Update(t *testing.T) {
+	mockService := new(MockVehiculoService)
+	handler := NewVehiculoHandler(mockService)
+
+	in := vehiculoinput.UpdateVehiculoInput{IDVehiculo: 5, NroPlaca: "ABC-123"}
+	output := &vehiculoinput.VehiculoOutput{IDVehiculo: 5, NroPlaca: "ABC-123"}
+	mockService.On("Update", in).Return(output, nil)
+
+	body, _ := json.Marshal(in)
+	req := httptest.NewRequest(http.MethodPut, "/vehiculo/5", bytes.NewReader(body))
+	r := mux.NewRouter()
+	r.HandleFunc("/vehiculo/{id}", handler.Update).Methods("PUT")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	var resp map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	assert.Equal(t, util.MSG_UPDATED, resp["message"])
 }

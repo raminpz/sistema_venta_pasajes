@@ -101,6 +101,9 @@ func TestAsientoService_Update(t *testing.T) {
 func TestAsientoService_Delete(t *testing.T) {
 	called := false
 	repo := &mockRepo{
+		GetByIDFn: func(id int64) (*domain.Asiento, error) {
+			return &domain.Asiento{IDAsiento: int(id)}, nil
+		},
 		DeleteFn: func(id int64) error {
 			called = true
 			if id != 1 {
@@ -115,3 +118,20 @@ func TestAsientoService_Delete(t *testing.T) {
 		t.Errorf("expected delete, got err %v, called %v", err, called)
 	}
 }
+
+func TestAsientoService_Delete_DeleteError(t *testing.T) {
+	repo := &mockRepo{
+		GetByIDFn: func(id int64) (*domain.Asiento, error) {
+			return &domain.Asiento{IDAsiento: int(id)}, nil
+		},
+		DeleteFn: func(id int64) error {
+			return errors.New("fk constraint")
+		},
+	}
+	svc := NewAsientoService(repo)
+	err := svc.Delete(1)
+	if err == nil {
+		t.Error("expected delete error")
+	}
+}
+

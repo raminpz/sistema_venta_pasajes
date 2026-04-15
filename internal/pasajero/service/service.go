@@ -9,6 +9,8 @@ import (
 	"sistema_venta_pasajes/pkg"
 	"strings"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type PasajeroService interface {
@@ -132,7 +134,20 @@ func (s *pasajeroService) Update(id int64, in input.UpdatePasajeroInput) (input.
 }
 
 func (s *pasajeroService) Delete(id int64) error {
-	return s.repo.Delete(id)
+	_, err := s.repo.GetByID(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return pkg.NotFound("pasajero_not_found", util.MSG_NOT_FOUND)
+		}
+		return pkg.Internal(util.MSG_DELETE_ERROR, err)
+	}
+	if err := s.repo.Delete(id); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return pkg.NotFound("pasajero_not_found", util.MSG_NOT_FOUND)
+		}
+		return pkg.Internal(util.MSG_DELETE_ERROR, err)
+	}
+	return nil
 }
 
 func (s *pasajeroService) GetByID(id int64) (input.PasajeroOutput, error) {

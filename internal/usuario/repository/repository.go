@@ -35,7 +35,14 @@ func (r *usuarioRepository) Update(ctx context.Context, id int, usuario *domain.
 }
 
 func (r *usuarioRepository) Delete(ctx context.Context, id int) error {
-	return r.db.WithContext(ctx).Delete(&domain.Usuario{}, id).Error
+	res := r.db.WithContext(ctx).Delete(&domain.Usuario{}, "id_usuario = ?", id)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *usuarioRepository) GetByID(ctx context.Context, id int) (*domain.Usuario, error) {
@@ -79,3 +86,5 @@ func (r *usuarioRepository) List(ctx context.Context, filtro map[string]interfac
 	err = tx.Count(&total).Error
 	return usuarios, int(total), err
 }
+
+

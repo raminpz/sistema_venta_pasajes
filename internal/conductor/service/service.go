@@ -133,10 +133,16 @@ func (s *service) Delete(ctx context.Context, id int64) error {
 	if id <= 0 {
 		return pkg.BadRequest("invalid_conductor_id", util.MSG_INVALID_ID)
 	}
-	err := s.repo.Delete(id)
+	_, err := s.repo.GetByID(id)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return pkg.NotFound("conductor_not_found", util.MSG_NOT_FOUND)
+			return pkg.NotFound(util.ERR_CODE_NOT_FOUND, util.MSG_NOT_FOUND)
+		}
+		return pkg.Internal(util.MSG_DELETE_ERROR, err)
+	}
+	if err := s.repo.Delete(id); err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return pkg.NotFound(util.ERR_CODE_NOT_FOUND, util.MSG_NOT_FOUND)
 		}
 		return pkg.Internal(util.MSG_DELETE_ERROR, err)
 	}

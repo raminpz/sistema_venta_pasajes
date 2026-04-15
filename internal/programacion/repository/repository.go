@@ -59,3 +59,5 @@ func (r *programacionRepository) List(offset, limit int) ([]domain.Programacion,
 	err := db.Find(&programaciones).Error
 	return programaciones, int(total), err
 }
+
+

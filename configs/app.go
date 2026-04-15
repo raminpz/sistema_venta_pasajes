@@ -31,7 +31,11 @@ func Run() error {
 
 	log.Printf("conexion a MySQL OK: %s:%s/%s", cfg.DB.Host, cfg.DB.Port, cfg.DB.Name)
 
-	router := routes.NewRouter(db, cfg.ProviderAPIKey, cfg.JWTSecret)
+	router := routes.NewRouter(db, cfg.JWTSecret, cfg.AuthDisabled)
+
+	if cfg.AuthDisabled {
+		log.Println("⚠️  [DEV] AUTH_DISABLED=true — autenticación JWT deshabilitada. NO usar en producción.")
+	}
 
 	// Middleware CORS para desarrollo local
 	corsHandler := handlers.CORS(

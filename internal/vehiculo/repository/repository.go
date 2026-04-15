@@ -34,7 +34,14 @@ func (r *vehiculoRepository) Update(vehiculo *domain.Vehiculo) error {
 }
 
 func (r *vehiculoRepository) Delete(id int64) error {
-	return r.db.Delete(&domain.Vehiculo{}, id).Error
+	res := r.db.Delete(&domain.Vehiculo{}, "ID_VEHICULO = ?", id)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *vehiculoRepository) GetByID(id int64) (*domain.Vehiculo, error) {
@@ -87,3 +94,5 @@ func (r *vehiculoRepository) ExistsBySoat(soat string) (bool, error) {
 	}
 	return count > 0, nil
 }
+
+

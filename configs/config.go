@@ -13,7 +13,7 @@ import (
 type Config struct {
 	AppPort        string
 	AppEnv         string
-	ProviderAPIKey string // PROVIDER_API_KEY: clave secreta exclusiva del proveedor
+	AuthDisabled   bool   // AUTH_DISABLED: deshabilita JWT/roles en desarrollo (NUNCA true en producción)
 	JWTSecret      string // JWT_SECRET: clave para firmar tokens JWT (HS256)
 	DB             DBConfig
 	HTTP           HTTPConfig
@@ -37,13 +37,13 @@ type HTTPConfig struct {
 }
 
 func Load() (Config, error) {
-	_ = godotenv.Load("config/.env")
 	_ = godotenv.Load(".env")
+	_ = godotenv.Load(".env.local")
 
 	cfg := Config{
 		AppPort:        getEnv("APP_PORT", "8080"),
 		AppEnv:         getEnv("APP_ENV", "development"),
-		ProviderAPIKey: getEnv("PROVIDER_API_KEY", ""),
+		AuthDisabled:   getEnv("AUTH_DISABLED", "false") == "true",
 		JWTSecret:      getEnv("JWT_SECRET", "cambiar_en_produccion_secreto_jwt_256bits"),
 		DB: DBConfig{
 			Host:            getEnv("DB_HOST", "127.0.0.1"),

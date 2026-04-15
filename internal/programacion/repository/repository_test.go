@@ -49,6 +49,7 @@ func (m *mockProgramacionRepository) List(offset, limit int) ([]domain.Programac
 	return nil, 0, nil
 }
 
+
 func TestRepositoryCreateOK(t *testing.T) {
 	repo := &mockProgramacionRepository{CreateFunc: func(p *domain.Programacion) error {
 		if p.IDRuta <= 0 {

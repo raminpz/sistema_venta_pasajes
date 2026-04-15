@@ -2,6 +2,7 @@ package repository
 
 import (
 	"sistema_venta_pasajes/internal/conductor/domain"
+
 	"gorm.io/gorm"
 )
 
@@ -53,3 +54,4 @@ func (r *conductorRepository) List() ([]domain.Conductor, error) {
 	err := r.db.Model(&domain.Conductor{}).Order("id_conductor ASC").Find(&conductores).Error
 	return conductores, err
 }
+

@@ -39,13 +39,22 @@ func (r *terminalRepository) Update(terminal *domain.Terminal) error {
 }
 
 func (r *terminalRepository) Delete(id int64) error {
-	return r.db.Delete(&domain.Terminal{}, "ID_TERMINAL = ?", id).Error
+	res := r.db.Delete(&domain.Terminal{}, "ID_TERMINAL = ?", id)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *terminalRepository) List() ([]domain.Terminal, error) {
-	   var terminals []domain.Terminal
-	   if err := r.db.Find(&terminals).Error; err != nil {
-			   return nil, err
-	   }
-	   return terminals, nil
+	var terminals []domain.Terminal
+	if err := r.db.Find(&terminals).Error; err != nil {
+		return nil, err
+	}
+	return terminals, nil
 }
+
+

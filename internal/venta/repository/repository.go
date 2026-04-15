@@ -32,7 +32,14 @@ func (r *ventaRepository) Update(venta *domain.Venta) error {
 }
 
 func (r *ventaRepository) Delete(id int64) error {
-	return r.db.Delete(&domain.Venta{}, id).Error
+	res := r.db.Delete(&domain.Venta{}, "ID_VENTA = ?", id)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *ventaRepository) GetByID(id int64) (*domain.Venta, error) {
@@ -55,7 +62,6 @@ func (r *ventaRepository) List(offset, limit int) ([]domain.Venta, int, error) {
 }
 
 // NextCorrelativo obtiene el siguiente número correlativo para una serie dada.
-// Consulta el máximo existente y retorna max+1 (empieza en 1 si no hay registros).
 func (r *ventaRepository) NextCorrelativo(serie string) (uint, error) {
 	var maxCorrelativo uint
 	err := r.db.Model(&domain.Venta{}).
@@ -67,3 +73,5 @@ func (r *ventaRepository) NextCorrelativo(serie string) (uint, error) {
 	}
 	return maxCorrelativo + 1, nil
 }
+
+

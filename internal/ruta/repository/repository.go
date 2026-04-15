@@ -54,3 +54,5 @@ func (r *rutaRepository) List() ([]domain.Ruta, error) {
 	err := r.db.Model(&domain.Ruta{}).Order("id_ruta ASC").Find(&rutas).Error
 	return rutas, err
 }
+
+

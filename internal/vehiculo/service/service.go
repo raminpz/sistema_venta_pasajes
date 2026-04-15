@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"sistema_venta_pasajes/internal/vehiculo/domain"
 	"sistema_venta_pasajes/internal/vehiculo/input"
 	"sistema_venta_pasajes/internal/vehiculo/repository"
@@ -8,6 +9,8 @@ import (
 	"sistema_venta_pasajes/pkg"
 	"strings"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type VehiculoService interface {
@@ -129,7 +132,20 @@ func (s *vehiculoService) Update(in input.UpdateVehiculoInput) (*input.VehiculoO
 }
 
 func (s *vehiculoService) Delete(id int64) error {
-	return s.repo.Delete(id)
+	_, err := s.repo.GetByID(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return pkg.NotFound(util.ERR_CODE_NOT_FOUND, util.ERR_NOT_FOUND)
+		}
+		return pkg.Internal(util.ERR_DELETE, err)
+	}
+	if err := s.repo.Delete(id); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return pkg.NotFound(util.ERR_CODE_NOT_FOUND, util.ERR_NOT_FOUND)
+		}
+		return pkg.Internal(util.ERR_DELETE, err)
+	}
+	return nil
 }
 
 func (s *vehiculoService) GetByID(id int64) (*input.VehiculoOutput, error) {

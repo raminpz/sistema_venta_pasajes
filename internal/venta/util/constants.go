@@ -26,6 +26,7 @@ const (
 	MSG_VENTA_PRECIO_INVALID        = "El campo precio no puede ser negativo"
 	MSG_VENTA_DESCUENTO_INVALID     = "El descuento no puede ser negativo ni mayor al precio"
 
+
 	MSG_VENTA_FK_PROGRAMACION    = "El id_programacion indicado no existe"
 	MSG_VENTA_FK_PASAJERO        = "El id_pasajero indicado no existe"
 	MSG_VENTA_FK_ASIENTO         = "El id_asiento indicado no existe"
