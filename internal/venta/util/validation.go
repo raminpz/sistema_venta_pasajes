@@ -8,7 +8,7 @@ import (
 )
 
 // ValidarCreateInput valida los campos obligatorios del input de creación.
-func ValidarCreateInput(idUsuario, idTipoComprobante, idProgramacion, idPasajero, idAsiento int64, precio float64, descuento *float64) error {
+func ValidarCreateInput(idUsuario, idTipoComprobante, idProgramacion, idPasajero, idAsiento, idTramo int64, precio float64, descuento *float64) error {
 	details := map[string]string{}
 	if idUsuario <= 0 {
 		details["id_usuario"] = MSG_VENTA_USUARIO_REQUIRED
@@ -25,13 +25,14 @@ func ValidarCreateInput(idUsuario, idTipoComprobante, idProgramacion, idPasajero
 	if idAsiento <= 0 {
 		details["id_asiento"] = MSG_VENTA_ASIENTO_REQUIRED
 	}
+	if idTramo <= 0 {
+		details["id_tramo"] = MSG_VENTA_TRAMO_REQUIRED
+	}
 	if precio < 0 {
 		details["precio"] = MSG_VENTA_PRECIO_INVALID
 	}
-	if descuento != nil {
-		if *descuento < 0 || *descuento > precio {
-			details["descuento"] = MSG_VENTA_DESCUENTO_INVALID
-		}
+	if descuento != nil && (*descuento < 0 || *descuento > precio) {
+		details["descuento"] = MSG_VENTA_DESCUENTO_INVALID
 	}
 	if len(details) > 0 {
 		return pkg.Validation(MSG_VENTA_VALIDATION_ERROR, details)
@@ -62,6 +63,7 @@ func ParseDBError(err error, errCode, genericMsg string) error {
 		"FK_VENTA_ASIENTO":          MSG_VENTA_FK_ASIENTO,
 		"FK_VENTA_USUARIO":          MSG_VENTA_FK_USUARIO,
 		"FK_VENTA_TIPO_COMPROBANTE": MSG_VENTA_FK_COMPROBANTE,
+		"FK_VENTA_TRAMO":            MSG_VENTA_FK_TRAMO,
 	}
 	duplicateMessages := map[string]string{
 		"UQ_VENTA_PROG_ASIENTO":  MSG_VENTA_DUPLICATE_ASIENTO,

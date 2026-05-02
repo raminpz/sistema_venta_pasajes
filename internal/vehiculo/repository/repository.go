@@ -13,8 +13,6 @@ type VehiculoRepository interface {
 	GetByID(id int64) (*domain.Vehiculo, error)
 	List(offset, limit int) ([]domain.Vehiculo, int, error)
 	ExistsByPlaca(placa string) (bool, error)
-	ExistsByChasis(chasis string) (bool, error)
-	ExistsBySoat(soat string) (bool, error)
 }
 
 type vehiculoRepository struct {
@@ -72,27 +70,3 @@ func (r *vehiculoRepository) ExistsByPlaca(placa string) (bool, error) {
 	}
 	return count > 0, nil
 }
-
-func (r *vehiculoRepository) ExistsByChasis(chasis string) (bool, error) {
-	var count int64
-	err := r.db.Model(&domain.Vehiculo{}).
-		Where("NUMERO_CHASIS = ?", chasis).
-		Count(&count).Error
-	if err != nil {
-		return false, err
-	}
-	return count > 0, nil
-}
-
-func (r *vehiculoRepository) ExistsBySoat(soat string) (bool, error) {
-	var count int64
-	err := r.db.Model(&domain.Vehiculo{}).
-		Where("NRO_SOAT = ?", soat).
-		Count(&count).Error
-	if err != nil {
-		return false, err
-	}
-	return count > 0, nil
-}
-
-

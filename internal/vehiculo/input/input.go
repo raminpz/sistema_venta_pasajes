@@ -49,32 +49,26 @@ type CreateVehiculoInput struct {
 
 type UpdateVehiculoInput struct {
 	IDVehiculo           int64     `json:"id_vehiculo"`
-	IDTipoVehiculo       int64     `json:"id_tipo_vehiculo"`
-	NroPlaca             string    `json:"nro_placa"`
-	Marca                string    `json:"marca"`
-	Modelo               string    `json:"modelo"`
-	AnioFabricacion      int       `json:"anio_fabricacion"`
-	NumeroChasis         string    `json:"numero_chasis"`
-	Capacidad            int       `json:"capacidad"`
-	NroSoat              string    `json:"nro_soat"`
+	IDTipoVehiculo       *int64    `json:"id_tipo_vehiculo"`
+	NroPlaca             *string   `json:"nro_placa"`
+	Marca                *string   `json:"marca"`
+	Modelo               *string   `json:"modelo"`
+	AnioFabricacion      *int      `json:"anio_fabricacion"`
+	NumeroChasis         *string   `json:"numero_chasis"`
+	Capacidad            *int      `json:"capacidad"`
+	NroSoat              *string   `json:"nro_soat"`
 	FechaVencSoat        *DateOnly `json:"fecha_venc_soat"`
-	NroRevisionTecnica   string    `json:"nro_revision_tecnica"`
+	NroRevisionTecnica   *string   `json:"nro_revision_tecnica"`
 	FechaVencRevisionTec *DateOnly `json:"fecha_venc_revision_tecnica"`
-	Estado               string    `json:"estado"`
+	Estado               *string   `json:"estado"`
 }
 
 type VehiculoOutput struct {
 	IDVehiculo           int64     `json:"id_vehiculo"`
-	IDTipoVehiculo       int64     `json:"id_tipo_vehiculo"`
-	NroPlaca             string    `json:"nro_placa"`
-	Marca                string    `json:"marca"`
 	Modelo               string    `json:"modelo"`
-	AnioFabricacion      int       `json:"anio_fabricacion"`
-	NumeroChasis         string    `json:"numero_chasis"`
+	NroPlaca             string    `json:"nro_placa"`
 	Capacidad            int       `json:"capacidad"`
-	NroSoat              string    `json:"nro_soat"`
 	FechaVencSoat        *DateOnly `json:"fecha_venc_soat"`
-	NroRevisionTecnica   string    `json:"nro_revision_tecnica"`
 	FechaVencRevisionTec *DateOnly `json:"fecha_venc_revision_tecnica"`
 	Estado               string    `json:"estado"`
 }

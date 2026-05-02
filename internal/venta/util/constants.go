@@ -23,6 +23,9 @@ const (
 	MSG_VENTA_PROGRAMACION_REQUIRED = "El campo id_programacion es obligatorio"
 	MSG_VENTA_PASAJERO_REQUIRED     = "El campo id_pasajero es obligatorio"
 	MSG_VENTA_ASIENTO_REQUIRED      = "El campo id_asiento es obligatorio"
+	MSG_VENTA_TRAMO_REQUIRED        = "El campo id_tramo es obligatorio"
+	MSG_VENTA_ASIENTO_OCUPADO       = "El asiento ya está ocupado en ese tramo para esta programación"
+	MSG_VENTA_FK_TRAMO              = "El id_tramo indicado no existe"
 	MSG_VENTA_PRECIO_INVALID        = "El campo precio no puede ser negativo"
 	MSG_VENTA_DESCUENTO_INVALID     = "El descuento no puede ser negativo ni mayor al precio"
 

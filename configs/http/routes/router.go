@@ -20,12 +20,14 @@ import (
 	empresahandler "sistema_venta_pasajes/internal/empresa/handler"
 	encomiendahandler "sistema_venta_pasajes/internal/encomienda/handler"
 	liquidacionhandler "sistema_venta_pasajes/internal/liquidacion/handler"
+	paradahandler "sistema_venta_pasajes/internal/parada/handler"
 	pagohandler "sistema_venta_pasajes/internal/pago/handler"
 	pasajerohandler "sistema_venta_pasajes/internal/pasajero/handler"
 	programacionhandler "sistema_venta_pasajes/internal/programacion/handler"
 	proveedorsistemahandler "sistema_venta_pasajes/internal/proveedor/handler"
 	rutahandler "sistema_venta_pasajes/internal/ruta/handler"
 	terminalhandler "sistema_venta_pasajes/internal/terminal/handler"
+	tramohandler "sistema_venta_pasajes/internal/tramo/handler"
 	usuariohandler "sistema_venta_pasajes/internal/usuario/handler"
 	vehiculohandler "sistema_venta_pasajes/internal/vehiculo/handler"
 	ventahandler "sistema_venta_pasajes/internal/venta/handler"
@@ -100,6 +102,8 @@ func NewRouter(db *gorm.DB, jwtSecret string, authDisabled ...bool) *mux.Router 
 	empresahandler.RegisterRoutes(adminRouter, db)
 	conductorhandler.RegisterRoutes(adminRouter, db)
 	rutahandler.RegisterRutaRoutes(adminRouter, db)
+	paradahandler.RegisterRoutes(adminRouter, db)
+	tramohandler.RegisterRoutes(adminRouter, db)
 	vehiculohandler.RegisterRoutes(adminRouter, db)
 	asientohandler.RegisterAsientoRoutes(adminRouter, db)
 	proveedorsistemahandler.RegisterRoutes(adminRouter, db)

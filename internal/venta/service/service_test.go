@@ -48,6 +48,9 @@ func (f *fakeRepo) NextCorrelativo(_ string) (uint, error) {
 	}
 	return f.nextCorrelativo, nil
 }
+func (f *fakeRepo) IsAsientoDisponible(_, _, _ int64) (bool, error) {
+	return true, nil
+}
 
 // ventaInput crea un input válido con los campos obligatorios.
 func ventaInput(tipo int64, precio float64) input.VentaCreateInput {
@@ -57,6 +60,7 @@ func ventaInput(tipo int64, precio float64) input.VentaCreateInput {
 		IDProgramacion:    10,
 		IDPasajero:        20,
 		IDAsiento:         5,
+		IDTramo:           1,
 		Precio:            precio,
 	}
 }
@@ -132,7 +136,7 @@ func TestVentaService_Create_ConDescuento(t *testing.T) {
 	desc := 20.0
 	in := input.VentaCreateInput{
 		IDUsuario: 1, IDTipoComprobante: 2,
-		IDProgramacion: 10, IDPasajero: 20, IDAsiento: 5,
+		IDProgramacion: 10, IDPasajero: 20, IDAsiento: 5, IDTramo: 1,
 		Precio: 100, Descuento: &desc,
 	}
 	out, err := s.Create(in)

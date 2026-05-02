@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"sistema_venta_pasajes/internal/vehiculo/util"
 	"testing"
+	"time"
 
 	vehiculoinput "sistema_venta_pasajes/internal/vehiculo/input"
 
@@ -56,7 +57,17 @@ func TestVehiculoHandler_Create(t *testing.T) {
 func TestVehiculoHandler_GetByID(t *testing.T) {
 	mockService := new(MockVehiculoService)
 	handler := NewVehiculoHandler(mockService)
-	output := &vehiculoinput.VehiculoOutput{IDVehiculo: 5, NroPlaca: "XYZ123"}
+	fvSoat := &vehiculoinput.DateOnly{Time: time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)}
+	fvRev := &vehiculoinput.DateOnly{Time: time.Date(2027, 1, 15, 0, 0, 0, 0, time.UTC)}
+	output := &vehiculoinput.VehiculoOutput{
+		IDVehiculo:           5,
+		Modelo:               "Sprinter 516",
+		NroPlaca:             "XYZ123",
+		Capacidad:            30,
+		FechaVencSoat:        fvSoat,
+		FechaVencRevisionTec: fvRev,
+		Estado:               "ACTIVO",
+	}
 	mockService.On("GetByID", int64(5)).Return(output, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/vehiculo/5", nil)
@@ -67,9 +78,25 @@ func TestVehiculoHandler_GetByID(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	var resp map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 	assert.Equal(t, util.MSG_GET, resp["message"])
 	assert.NotNil(t, resp["data"])
+
+	data := resp["data"].(map[string]interface{})
+	assert.Contains(t, data, "id_vehiculo")
+	assert.Contains(t, data, "modelo")
+	assert.Contains(t, data, "nro_placa")
+	assert.Contains(t, data, "capacidad")
+	assert.Contains(t, data, "fecha_venc_soat")
+	assert.Contains(t, data, "fecha_venc_revision_tecnica")
+	assert.Contains(t, data, "estado")
+
+	assert.NotContains(t, data, "id_tipo_vehiculo")
+	assert.NotContains(t, data, "marca")
+	assert.NotContains(t, data, "anio_fabricacion")
+	assert.NotContains(t, data, "numero_chasis")
+	assert.NotContains(t, data, "nro_soat")
+	assert.NotContains(t, data, "nro_revision_tecnica")
 }
 
 func TestVehiculoHandler_Delete(t *testing.T) {
@@ -106,14 +133,15 @@ func TestVehiculoHandler_Update(t *testing.T) {
 	mockService := new(MockVehiculoService)
 	handler := NewVehiculoHandler(mockService)
 
-	in := vehiculoinput.UpdateVehiculoInput{IDVehiculo: 5, NroPlaca: "ABC-123"}
+	nroPlaca := "ABC-123"
+	in := vehiculoinput.UpdateVehiculoInput{IDVehiculo: 5, NroPlaca: &nroPlaca}
 	output := &vehiculoinput.VehiculoOutput{IDVehiculo: 5, NroPlaca: "ABC-123"}
 	mockService.On("Update", in).Return(output, nil)
 
 	body, _ := json.Marshal(in)
-	req := httptest.NewRequest(http.MethodPut, "/vehiculo/5", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPatch, "/vehiculo/5", bytes.NewReader(body))
 	r := mux.NewRouter()
-	r.HandleFunc("/vehiculo/{id}", handler.Update).Methods("PUT")
+	r.HandleFunc("/vehiculo/{id}", handler.Update).Methods("PATCH")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 

@@ -36,6 +36,8 @@ sistema_venta_pasajes/
 │   ├── empresa/
 │   ├── conductor/
 │   ├── ruta/
+│   ├── parada/
+│   ├── tramo/
 │   ├── vehiculo/
 │   ├── asiento/
 │   ├── pasajero/
@@ -110,11 +112,15 @@ erDiagram
   RUTA ||--o{ PROGRAMACION : "programa"
   VEHICULO ||--o{ PROGRAMACION : "opera"
   CONDUCTOR ||--o{ PROGRAMACION : "conduce"
+  RUTA ||--o{ PARADA : "define"
+  PARADA ||--o{ TRAMO : "origen"
+  PARADA ||--o{ TRAMO : "destino"
 
   TIPO_COMPROBANTE ||--o{ VENTA : "tipo"
   USUARIO ||--o{ VENTA : "registra"
   PASAJERO ||--o{ VENTA : "titular"
   PROGRAMACION ||--o{ VENTA : "viaje"
+  TRAMO ||--o{ VENTA : "segmenta"
 
   VENTA ||--o{ PAGO : "pagos"
   METODO_PAGO ||--o{ PAGO : "metodo"

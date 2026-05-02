@@ -11,6 +11,7 @@ type Venta struct {
 	IDProgramacion    int64     `gorm:"column:ID_PROGRAMACION" json:"id_programacion"`
 	IDPasajero        int64     `gorm:"column:ID_PASAJERO" json:"id_pasajero"`
 	IDAsiento         int64     `gorm:"column:ID_ASIENTO" json:"id_asiento"`
+	IDTramo           int64     `gorm:"column:ID_TRAMO" json:"id_tramo"`
 	Precio            float64   `gorm:"column:PRECIO" json:"precio"`
 	Descuento         *float64  `gorm:"column:DESCUENTO" json:"descuento"`
 	Serie             string    `gorm:"column:SERIE" json:"serie"`

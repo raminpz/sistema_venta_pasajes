@@ -2,6 +2,7 @@ package service
 
 import (
 	"testing"
+	"time"
 
 	vehiculodomain "sistema_venta_pasajes/internal/vehiculo/domain"
 	vehiculoinput "sistema_venta_pasajes/internal/vehiculo/input"
@@ -38,57 +39,92 @@ func (m *MockVehiculoRepository) ExistsByPlaca(placa string) (bool, error) {
 	args := m.Called(placa)
 	return args.Bool(0), args.Error(1)
 }
-func (m *MockVehiculoRepository) ExistsByChasis(chasis string) (bool, error) {
-	args := m.Called(chasis)
-	return args.Bool(0), args.Error(1)
-}
-func (m *MockVehiculoRepository) ExistsBySoat(soat string) (bool, error) {
-	args := m.Called(soat)
-	return args.Bool(0), args.Error(1)
+
+func dateOnlyPtr(t time.Time) *vehiculoinput.DateOnly {
+	return &vehiculoinput.DateOnly{Time: t}
 }
 
 func TestVehiculoService_Create(t *testing.T) {
 	mockRepo := new(MockVehiculoRepository)
 	service := NewVehiculoService(mockRepo)
-	vehiculoInput := vehiculoinput.CreateVehiculoInput{NroPlaca: "ABC123", NumeroChasis: "CHS123", NroSoat: "SOAT-001"}
-	mockRepo.On("ExistsByPlaca", "ABC123").Return(false, nil)
-	mockRepo.On("ExistsByChasis", "CHS123").Return(false, nil)
-	mockRepo.On("ExistsBySoat", "SOAT-001").Return(false, nil)
+	vehiculoInput := vehiculoinput.CreateVehiculoInput{
+		IDTipoVehiculo:       1,
+		NroPlaca:             "ABC-123",
+		Marca:                "Toyota",
+		Modelo:               "Coaster",
+		AnioFabricacion:      2022,
+		NumeroChasis:         "CHS123456",
+		Capacidad:            30,
+		NroSoat:              "SOAT-001",
+		FechaVencSoat:        dateOnlyPtr(time.Date(2027, 12, 31, 0, 0, 0, 0, time.UTC)),
+		NroRevisionTecnica:   "REV-001",
+		FechaVencRevisionTec: dateOnlyPtr(time.Date(2027, 11, 30, 0, 0, 0, 0, time.UTC)),
+		Estado:               "ACTIVO",
+	}
+	mockRepo.On("ExistsByPlaca", "ABC-123").Return(false, nil)
 	mockRepo.On("Create", mock.Anything).Return(nil)
 	output, err := service.Create(vehiculoInput)
 	assert.NoError(t, err)
 	assert.NotNil(t, output)
 }
 
+func TestVehiculoService_Create_MissingFields(t *testing.T) {
+	mockRepo := new(MockVehiculoRepository)
+	service := NewVehiculoService(mockRepo)
+
+	// Sin IDTipoVehiculo
+	_, err := service.Create(vehiculoinput.CreateVehiculoInput{NroPlaca: "ABC-123"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "obligatorio")
+
+	// Sin placa
+	_, err = service.Create(vehiculoinput.CreateVehiculoInput{IDTipoVehiculo: 1})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "obligatorio")
+
+	// Fecha SOAT faltante
+	_, err = service.Create(vehiculoinput.CreateVehiculoInput{
+		IDTipoVehiculo: 1, NroPlaca: "ABC-123", Marca: "Toyota", Modelo: "Coaster",
+		AnioFabricacion: 2022, NumeroChasis: "CHS1", Capacidad: 10,
+		NroSoat: "SOAT-1", NroRevisionTecnica: "REV-1",
+		FechaVencRevisionTec: dateOnlyPtr(time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)),
+		Estado:               "ACTIVO",
+	})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "SOAT")
+
+	// Estado inválido
+	_, err = service.Create(vehiculoinput.CreateVehiculoInput{
+		IDTipoVehiculo: 1, NroPlaca: "ABC-123", Marca: "Toyota", Modelo: "Coaster",
+		AnioFabricacion: 2022, NumeroChasis: "CHS1", Capacidad: 10,
+		NroSoat: "SOAT-1", FechaVencSoat: dateOnlyPtr(time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)),
+		NroRevisionTecnica: "REV-1", FechaVencRevisionTec: dateOnlyPtr(time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)),
+		Estado: "INVALIDO",
+	})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "ACTIVO")
+}
+
 func TestVehiculoService_Create_DuplicatePlaca(t *testing.T) {
 	mockRepo := new(MockVehiculoRepository)
 	service := NewVehiculoService(mockRepo)
-	vehiculoInput := vehiculoinput.CreateVehiculoInput{NroPlaca: "DUP123", NumeroChasis: "CHS999", NroSoat: "SOAT-002"}
+	vehiculoInput := vehiculoinput.CreateVehiculoInput{
+		IDTipoVehiculo:       1,
+		NroPlaca:             "DUP123",
+		Marca:                "Toyota",
+		Modelo:               "Coaster",
+		AnioFabricacion:      2022,
+		NumeroChasis:         "CHS999",
+		Capacidad:            20,
+		NroSoat:              "SOAT-002",
+		FechaVencSoat:        dateOnlyPtr(time.Date(2027, 12, 31, 0, 0, 0, 0, time.UTC)),
+		NroRevisionTecnica:   "REV-002",
+		FechaVencRevisionTec: dateOnlyPtr(time.Date(2027, 10, 31, 0, 0, 0, 0, time.UTC)),
+		Estado:               "ACTIVO",
+	}
 	mockRepo.On("ExistsByPlaca", "DUP123").Return(true, nil)
 	output, err := service.Create(vehiculoInput)
 	assert.Error(t, err)
 	assert.Nil(t, output)
 }
 
-func TestVehiculoService_Create_DuplicateChasis(t *testing.T) {
-	mockRepo := new(MockVehiculoRepository)
-	service := NewVehiculoService(mockRepo)
-	vehiculoInput := vehiculoinput.CreateVehiculoInput{NroPlaca: "PLACA-OK", NumeroChasis: "CHS-DUP", NroSoat: "SOAT-003"}
-	mockRepo.On("ExistsByPlaca", "PLACA-OK").Return(false, nil)
-	mockRepo.On("ExistsByChasis", "CHS-DUP").Return(true, nil)
-	output, err := service.Create(vehiculoInput)
-	assert.Error(t, err)
-	assert.Nil(t, output)
-}
-
-func TestVehiculoService_Create_DuplicateSoat(t *testing.T) {
-	mockRepo := new(MockVehiculoRepository)
-	service := NewVehiculoService(mockRepo)
-	vehiculoInput := vehiculoinput.CreateVehiculoInput{NroPlaca: "PLACA-OK2", NumeroChasis: "CHS-OK2", NroSoat: "SOAT-DUP"}
-	mockRepo.On("ExistsByPlaca", "PLACA-OK2").Return(false, nil)
-	mockRepo.On("ExistsByChasis", "CHS-OK2").Return(false, nil)
-	mockRepo.On("ExistsBySoat", "SOAT-DUP").Return(true, nil)
-	output, err := service.Create(vehiculoInput)
-	assert.Error(t, err)
-	assert.Nil(t, output)
-}

@@ -16,6 +16,6 @@ func RegisterRoutes(r *mux.Router, db *gorm.DB) {
 	r.HandleFunc("/vehiculo", h.Create).Methods("POST")
 	r.HandleFunc("/vehiculos", h.List).Methods("GET")
 	r.HandleFunc("/vehiculo/{id}", h.GetByID).Methods("GET")
-	r.HandleFunc("/vehiculo/{id}", h.Update).Methods("PUT")
+	r.HandleFunc("/vehiculo/{id}", h.Update).Methods("PATCH", "PUT")
 	r.HandleFunc("/vehiculo/{id}", h.Delete).Methods("DELETE")
 }

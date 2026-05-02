@@ -8,7 +8,6 @@ import (
 	"sistema_venta_pasajes/internal/vehiculo/util"
 	"sistema_venta_pasajes/pkg"
 	"strings"
-	"time"
 
 	"gorm.io/gorm"
 )
@@ -30,23 +29,19 @@ func NewVehiculoService(repo repository.VehiculoRepository) VehiculoService {
 }
 
 func (s *vehiculoService) Create(in input.CreateVehiculoInput) (*input.VehiculoOutput, error) {
-	if !util.ValidarPlaca(in.NroPlaca) {
+	pkg.TrimSpacesOnStruct(&in)
+	if err := util.ValidarCamposCreate(in); err != nil {
+		return nil, err
+	}
+	if !util.ValidarPlaca(strings.ToUpper(in.NroPlaca)) {
 		return nil, pkg.BadRequest("invalid_plate", util.ERR_INVALID_ID)
 	}
 	in.NroPlaca = strings.ToUpper(in.NroPlaca)
 	in.Marca = pkg.CapitalizeWords(in.Marca)
 	in.Modelo = pkg.CapitalizeWords(in.Modelo)
-	pkg.TrimSpacesOnStruct(&in)
-	var fechaVencSoat *time.Time
-	if in.FechaVencSoat != nil && !in.FechaVencSoat.Time.IsZero() {
-		t := in.FechaVencSoat.Time
-		fechaVencSoat = &t
-	}
-	var fechaVencRevisionTec *time.Time
-	if in.FechaVencRevisionTec != nil && !in.FechaVencRevisionTec.Time.IsZero() {
-		t := in.FechaVencRevisionTec.Time
-		fechaVencRevisionTec = &t
-	}
+
+	fechaVencSoat := in.FechaVencSoat.Time
+	fechaVencRevisionTec := in.FechaVencRevisionTec.Time
 	vehiculo := &domain.Vehiculo{
 		IDTipoVehiculo:       in.IDTipoVehiculo,
 		NroPlaca:             in.NroPlaca,
@@ -56,34 +51,18 @@ func (s *vehiculoService) Create(in input.CreateVehiculoInput) (*input.VehiculoO
 		NumeroChasis:         in.NumeroChasis,
 		Capacidad:            in.Capacidad,
 		NroSoat:              in.NroSoat,
-		FechaVencSoat:        fechaVencSoat,
+		FechaVencSoat:        &fechaVencSoat,
 		NroRevisionTecnica:   in.NroRevisionTecnica,
-		FechaVencRevisionTec: fechaVencRevisionTec,
+		FechaVencRevisionTec: &fechaVencRevisionTec,
 		Estado:               in.Estado,
 	}
-	// Validar duplicidad específica antes de crear
+	// Validar duplicidad por placa antes de crear
 	existsPlaca, err := s.repo.ExistsByPlaca(in.NroPlaca)
 	if err != nil {
 		return nil, pkg.Internal(err.Error())
 	}
 	if existsPlaca {
 		return nil, pkg.BadRequest("duplicate_placa", util.ERR_DUPLICATE_PLATE)
-	}
-
-	existsChasis, err := s.repo.ExistsByChasis(in.NumeroChasis)
-	if err != nil {
-		return nil, pkg.Internal(err.Error())
-	}
-	if existsChasis {
-		return nil, pkg.BadRequest("duplicate_chasis", util.ERR_DUPLICATE_CHASSIS)
-	}
-
-	existsSoat, err := s.repo.ExistsBySoat(in.NroSoat)
-	if err != nil {
-		return nil, pkg.Internal(err.Error())
-	}
-	if existsSoat {
-		return nil, pkg.BadRequest("duplicate_soat", util.ERR_DUPLICATE_SOAT)
 	}
 
 	err = s.repo.Create(vehiculo)
@@ -94,36 +73,58 @@ func (s *vehiculoService) Create(in input.CreateVehiculoInput) (*input.VehiculoO
 }
 
 func (s *vehiculoService) Update(in input.UpdateVehiculoInput) (*input.VehiculoOutput, error) {
+	if err := util.ValidarCamposUpdate(in); err != nil {
+		return nil, err
+	}
+
 	vehiculo, err := s.repo.GetByID(in.IDVehiculo)
 	if err != nil {
 		return nil, pkg.NotFound("vehiculo_not_found", util.ERR_NOT_FOUND)
 	}
-	in.NroPlaca = strings.ToUpper(in.NroPlaca)
-	in.Marca = pkg.CapitalizeWords(in.Marca)
-	in.Modelo = pkg.CapitalizeWords(in.Modelo)
-	pkg.TrimSpacesOnStruct(&in)
-	vehiculo.IDTipoVehiculo = in.IDTipoVehiculo
-	vehiculo.NroPlaca = in.NroPlaca
-	vehiculo.Marca = in.Marca
-	vehiculo.Modelo = in.Modelo
-	vehiculo.AnioFabricacion = in.AnioFabricacion
-	vehiculo.NumeroChasis = in.NumeroChasis
-	vehiculo.Capacidad = in.Capacidad
-	vehiculo.NroSoat = in.NroSoat
+
+	if in.IDTipoVehiculo != nil {
+		vehiculo.IDTipoVehiculo = *in.IDTipoVehiculo
+	}
+	if in.NroPlaca != nil {
+		placa := strings.ToUpper(strings.TrimSpace(*in.NroPlaca))
+		if !util.ValidarPlaca(placa) {
+			return nil, pkg.BadRequest("invalid_plate", util.ERR_INVALID_ID)
+		}
+		vehiculo.NroPlaca = placa
+	}
+	if in.Marca != nil {
+		vehiculo.Marca = pkg.CapitalizeWords(strings.TrimSpace(*in.Marca))
+	}
+	if in.Modelo != nil {
+		vehiculo.Modelo = pkg.CapitalizeWords(strings.TrimSpace(*in.Modelo))
+	}
+	if in.AnioFabricacion != nil {
+		vehiculo.AnioFabricacion = *in.AnioFabricacion
+	}
+	if in.NumeroChasis != nil {
+		vehiculo.NumeroChasis = strings.TrimSpace(*in.NumeroChasis)
+	}
+	if in.Capacidad != nil {
+		vehiculo.Capacidad = *in.Capacidad
+	}
+	if in.NroSoat != nil {
+		vehiculo.NroSoat = strings.TrimSpace(*in.NroSoat)
+	}
 	if in.FechaVencSoat != nil {
-		t := in.FechaVencSoat.Time
-		vehiculo.FechaVencSoat = &t
-	} else {
-		vehiculo.FechaVencSoat = nil
+		fechaVencSoat := in.FechaVencSoat.Time
+		vehiculo.FechaVencSoat = &fechaVencSoat
 	}
-	vehiculo.NroRevisionTecnica = in.NroRevisionTecnica
+	if in.NroRevisionTecnica != nil {
+		vehiculo.NroRevisionTecnica = strings.TrimSpace(*in.NroRevisionTecnica)
+	}
 	if in.FechaVencRevisionTec != nil {
-		t := in.FechaVencRevisionTec.Time
-		vehiculo.FechaVencRevisionTec = &t
-	} else {
-		vehiculo.FechaVencRevisionTec = nil
+		fechaVencRevisionTec := in.FechaVencRevisionTec.Time
+		vehiculo.FechaVencRevisionTec = &fechaVencRevisionTec
 	}
-	vehiculo.Estado = in.Estado
+	if in.Estado != nil {
+		vehiculo.Estado = strings.ToUpper(strings.TrimSpace(*in.Estado))
+	}
+
 	err = s.repo.Update(vehiculo)
 	if err != nil {
 		return nil, pkg.Internal(err.Error())
@@ -180,16 +181,10 @@ func mapVehiculoOutput(v *domain.Vehiculo) *input.VehiculoOutput {
 	}
 	return &input.VehiculoOutput{
 		IDVehiculo:           v.IDVehiculo,
-		IDTipoVehiculo:       v.IDTipoVehiculo,
-		NroPlaca:             v.NroPlaca,
-		Marca:                v.Marca,
 		Modelo:               v.Modelo,
-		AnioFabricacion:      v.AnioFabricacion,
-		NumeroChasis:         v.NumeroChasis,
+		NroPlaca:             v.NroPlaca,
 		Capacidad:            v.Capacidad,
-		NroSoat:              v.NroSoat,
 		FechaVencSoat:        fechaVencSoat,
-		NroRevisionTecnica:   v.NroRevisionTecnica,
 		FechaVencRevisionTec: fechaVencRevisionTec,
 		Estado:               v.Estado,
 	}

@@ -39,6 +39,7 @@ func toVentaOutput(v *domain.Venta) *input.VentaOutput {
 		IDProgramacion:    v.IDProgramacion,
 		IDPasajero:        v.IDPasajero,
 		IDAsiento:         v.IDAsiento,
+		IDTramo:           v.IDTramo,
 		Precio:            v.Precio,
 		Descuento:         v.Descuento,
 		Serie:             v.Serie,
@@ -60,10 +61,19 @@ func (s *VentaServiceImpl) Create(in input.VentaCreateInput) (*input.VentaOutput
 
 	if err := util.ValidarCreateInput(
 		in.IDUsuario, in.IDTipoComprobante,
-		in.IDProgramacion, in.IDPasajero, in.IDAsiento,
+		in.IDProgramacion, in.IDPasajero, in.IDAsiento, in.IDTramo,
 		in.Precio, in.Descuento,
 	); err != nil {
 		return nil, err
+	}
+
+	// Validar disponibilidad del asiento en el tramo (solapamiento)
+	disponible, err := s.repo.IsAsientoDisponible(in.IDProgramacion, in.IDAsiento, in.IDTramo)
+	if err != nil {
+		return nil, pkg.NewAppError(500, util.ERR_CODE_CREATE, util.MSG_VENTA_CREATE_ERROR).WithCause(err)
+	}
+	if !disponible {
+		return nil, pkg.BadRequest(util.ERR_CODE_DUPLICATE, util.MSG_VENTA_ASIENTO_OCUPADO)
 	}
 
 	serie, err := util.SerieFromTipoComprobante(in.IDTipoComprobante)
@@ -85,10 +95,10 @@ func (s *VentaServiceImpl) Create(in input.VentaCreateInput) (*input.VentaOutput
 
 	var igv, total float64
 	switch in.IDTipoComprobante {
-	case 2: // FACTURA → aplica 18% IGV
+	case 2:
 		igv = subtotal * 0.18
 		total = subtotal + igv
-	default: // BOLETA o TICKET → sin IGV
+	default:
 		igv = 0
 		total = subtotal
 	}
@@ -105,6 +115,7 @@ func (s *VentaServiceImpl) Create(in input.VentaCreateInput) (*input.VentaOutput
 		IDProgramacion:    in.IDProgramacion,
 		IDPasajero:        in.IDPasajero,
 		IDAsiento:         in.IDAsiento,
+		IDTramo:           in.IDTramo,
 		Precio:            in.Precio,
 		Descuento:         in.Descuento,
 		Serie:             serie,

@@ -6,6 +6,7 @@ type VentaCreateInput struct {
 	IDProgramacion    int64    `json:"id_programacion"`
 	IDPasajero        int64    `json:"id_pasajero"`
 	IDAsiento         int64    `json:"id_asiento"`
+	IDTramo           int64    `json:"id_tramo"`
 	Precio            float64  `json:"precio"`
 	Descuento         *float64 `json:"descuento"`
 	Nota              string   `json:"nota"`
@@ -24,6 +25,7 @@ type VentaOutput struct {
 	IDProgramacion    int64    `json:"id_programacion"`
 	IDPasajero        int64    `json:"id_pasajero"`
 	IDAsiento         int64    `json:"id_asiento"`
+	IDTramo           int64    `json:"id_tramo"`
 	Precio            float64  `json:"precio"`
 	Descuento         *float64 `json:"descuento"`
 	Serie             string   `json:"serie"`

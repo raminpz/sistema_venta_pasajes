@@ -13,6 +13,7 @@ type VentaRepository interface {
 	GetByID(id int64) (*domain.Venta, error)
 	List(offset, limit int) ([]domain.Venta, int, error)
 	NextCorrelativo(serie string) (uint, error)
+	IsAsientoDisponible(idProgramacion, idAsiento, idTramo int64) (bool, error)
 }
 
 type ventaRepository struct {
@@ -61,7 +62,6 @@ func (r *ventaRepository) List(offset, limit int) ([]domain.Venta, int, error) {
 	return ventas, int(total), err
 }
 
-// NextCorrelativo obtiene el siguiente número correlativo para una serie dada.
 func (r *ventaRepository) NextCorrelativo(serie string) (uint, error) {
 	var maxCorrelativo uint
 	err := r.db.Model(&domain.Venta{}).
@@ -74,4 +74,26 @@ func (r *ventaRepository) NextCorrelativo(serie string) (uint, error) {
 	return maxCorrelativo + 1, nil
 }
 
-
+// IsAsientoDisponible verifica que el asiento no esté ocupado en un tramo solapado.
+// Compara los ORDEN de las PARADA: hay solapamiento si la venta existente empieza
+// antes del destino nuevo Y termina después del origen nuevo.
+func (r *ventaRepository) IsAsientoDisponible(idProgramacion, idAsiento, idTramo int64) (bool, error) {
+	var count int64
+	err := r.db.Raw(`
+		SELECT COUNT(*) FROM VENTA v
+		JOIN TRAMO t_nuevo   ON t_nuevo.ID_TRAMO = ?
+		JOIN PARADA po_nuevo ON po_nuevo.ID_PARADA = t_nuevo.ID_PARADA_ORIGEN
+		JOIN PARADA pd_nuevo ON pd_nuevo.ID_PARADA = t_nuevo.ID_PARADA_DESTINO
+		JOIN TRAMO t_exist   ON t_exist.ID_TRAMO = v.ID_TRAMO
+		JOIN PARADA po_exist ON po_exist.ID_PARADA = t_exist.ID_PARADA_ORIGEN
+		JOIN PARADA pd_exist ON pd_exist.ID_PARADA = t_exist.ID_PARADA_DESTINO
+		WHERE v.ID_PROGRAMACION = ?
+		  AND v.ID_ASIENTO = ?
+		  AND po_exist.ORDEN < pd_nuevo.ORDEN
+		  AND pd_exist.ORDEN > po_nuevo.ORDEN
+	`, idTramo, idProgramacion, idAsiento).Scan(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count == 0, nil
+}
