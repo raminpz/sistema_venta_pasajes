@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	asientoTramoInput "sistema_venta_pasajes/internal/asiento_tramo/input"
 	"sistema_venta_pasajes/internal/venta/domain"
 	"sistema_venta_pasajes/internal/venta/input"
 	"sistema_venta_pasajes/internal/venta/util"
@@ -48,12 +49,51 @@ func (f *fakeRepo) NextCorrelativo(_ string) (uint, error) {
 	}
 	return f.nextCorrelativo, nil
 }
-func (f *fakeRepo) IsAsientoDisponible(_, _, _ int64) (bool, error) {
-	return true, nil
+
+// ---------------------------------------------------------------------------
+// fakeAsientoTramoSvc mock
+// ---------------------------------------------------------------------------
+
+type fakeAsientoTramoSvc struct {
+	isDisponibleErr  error
+	isDisponible     bool
+	markOccupiedErr  error
+	markAvailableErr error
 }
 
-// ventaInput crea un input válido con los campos obligatorios.
-func ventaInput(tipo int64, precio float64) input.VentaCreateInput {
+func (f *fakeAsientoTramoSvc) Create(_ asientoTramoInput.CreateAsientoTramoInput) (*asientoTramoInput.AsientoTramoOutput, error) {
+	return nil, nil
+}
+
+func (f *fakeAsientoTramoSvc) GetByID(_ int64) (*asientoTramoInput.AsientoTramoOutput, error) {
+	return nil, nil
+}
+
+func (f *fakeAsientoTramoSvc) GetDisponiblesEnTramo(_ int64) ([]asientoTramoInput.AsientoTramoOutput, error) {
+	return nil, nil
+}
+
+func (f *fakeAsientoTramoSvc) MarkAsOccupied(_, _ int64, _ *int64) error {
+	return f.markOccupiedErr
+}
+
+func (f *fakeAsientoTramoSvc) MarkAsAvailable(_, _ int64) error {
+	return f.markAvailableErr
+}
+
+func (f *fakeAsientoTramoSvc) DeleteByVenta(_ int64) error {
+	return nil
+}
+
+func (f *fakeAsientoTramoSvc) IsAsientoDisponible(_, _ int64) (bool, error) {
+	if f.isDisponibleErr != nil {
+		return false, f.isDisponibleErr
+	}
+	return f.isDisponible, nil
+}
+
+// createVentaInput crea un input válido con los campos obligatorios.
+func createVentaInput(tipo int64, precio float64) input.VentaCreateInput {
 	return input.VentaCreateInput{
 		IDUsuario:         1,
 		IDTipoComprobante: tipo,
@@ -70,8 +110,8 @@ func ventaInput(tipo int64, precio float64) input.VentaCreateInput {
 // ---------------------------------------------------------------------------
 
 func TestVentaService_Create_Factura_AutoSerie(t *testing.T) {
-	s := &VentaServiceImpl{repo: &fakeRepo{nextCorrelativo: 1}}
-	out, err := s.Create(ventaInput(2, 100))
+	s := &VentaServiceImpl{repo: &fakeRepo{nextCorrelativo: 1}, asientoTramoSvc: &fakeAsientoTramoSvc{isDisponible: true}}
+	out, err := s.Create(createVentaInput(2, 100))
 	if err != nil {
 		t.Fatalf("no se esperaba error: %v", err)
 	}
@@ -94,8 +134,8 @@ func TestVentaService_Create_Factura_AutoSerie(t *testing.T) {
 }
 
 func TestVentaService_Create_Boleta_AutoSerie(t *testing.T) {
-	s := &VentaServiceImpl{repo: &fakeRepo{nextCorrelativo: 5}}
-	out, err := s.Create(ventaInput(1, 200))
+	s := &VentaServiceImpl{repo: &fakeRepo{nextCorrelativo: 5}, asientoTramoSvc: &fakeAsientoTramoSvc{isDisponible: true}}
+	out, err := s.Create(createVentaInput(1, 200))
 	if err != nil {
 		t.Fatalf("no se esperaba error: %v", err)
 	}
@@ -115,8 +155,8 @@ func TestVentaService_Create_Boleta_AutoSerie(t *testing.T) {
 }
 
 func TestVentaService_Create_Ticket_AutoSerie(t *testing.T) {
-	s := &VentaServiceImpl{repo: &fakeRepo{nextCorrelativo: 3}}
-	out, err := s.Create(ventaInput(3, 150))
+	s := &VentaServiceImpl{repo: &fakeRepo{nextCorrelativo: 3}, asientoTramoSvc: &fakeAsientoTramoSvc{isDisponible: true}}
+	out, err := s.Create(createVentaInput(3, 150))
 	if err != nil {
 		t.Fatalf("no se esperaba error: %v", err)
 	}
@@ -132,7 +172,7 @@ func TestVentaService_Create_Ticket_AutoSerie(t *testing.T) {
 }
 
 func TestVentaService_Create_ConDescuento(t *testing.T) {
-	s := &VentaServiceImpl{repo: &fakeRepo{nextCorrelativo: 2}}
+	s := &VentaServiceImpl{repo: &fakeRepo{nextCorrelativo: 2}, asientoTramoSvc: &fakeAsientoTramoSvc{isDisponible: true}}
 	desc := 20.0
 	in := input.VentaCreateInput{
 		IDUsuario: 1, IDTipoComprobante: 2,
@@ -155,8 +195,8 @@ func TestVentaService_Create_ConDescuento(t *testing.T) {
 }
 
 func TestVentaService_Create_TipoComprobanteInvalido(t *testing.T) {
-	s := &VentaServiceImpl{repo: &fakeRepo{}}
-	in := ventaInput(99, 100)
+	s := &VentaServiceImpl{repo: &fakeRepo{}, asientoTramoSvc: &fakeAsientoTramoSvc{}}
+	in := createVentaInput(99, 100)
 	_, err := s.Create(in)
 	if err == nil {
 		t.Error("debe fallar por tipo de comprobante invalido")
@@ -165,8 +205,8 @@ func TestVentaService_Create_TipoComprobanteInvalido(t *testing.T) {
 
 func TestVentaService_Create_PrecioCero_Valido(t *testing.T) {
 	// precio = 0 es válido (boleto gratuito)
-	s := &VentaServiceImpl{repo: &fakeRepo{nextCorrelativo: 1}}
-	out, err := s.Create(ventaInput(1, 0))
+	s := &VentaServiceImpl{repo: &fakeRepo{nextCorrelativo: 1}, asientoTramoSvc: &fakeAsientoTramoSvc{isDisponible: true}}
+	out, err := s.Create(createVentaInput(1, 0))
 	if err != nil {
 		t.Errorf("precio=0 debe ser válido (boleto gratuito), error: %v", err)
 	}
@@ -177,15 +217,15 @@ func TestVentaService_Create_PrecioCero_Valido(t *testing.T) {
 
 func TestVentaService_Create_PrecioNegativo(t *testing.T) {
 	// precio negativo debe fallar
-	s := &VentaServiceImpl{repo: &fakeRepo{}}
-	_, err := s.Create(ventaInput(1, -10))
+	s := &VentaServiceImpl{repo: &fakeRepo{}, asientoTramoSvc: &fakeAsientoTramoSvc{}}
+	_, err := s.Create(createVentaInput(1, -10))
 	if err == nil {
 		t.Error("debe fallar por precio negativo")
 	}
 }
 
 func TestVentaService_Create_UsuarioRequerido(t *testing.T) {
-	s := &VentaServiceImpl{repo: &fakeRepo{}}
+	s := &VentaServiceImpl{repo: &fakeRepo{}, asientoTramoSvc: &fakeAsientoTramoSvc{}}
 	in := input.VentaCreateInput{
 		IDUsuario: 0, IDTipoComprobante: 1,
 		IDProgramacion: 10, IDPasajero: 20, IDAsiento: 5, Precio: 100,
@@ -197,7 +237,7 @@ func TestVentaService_Create_UsuarioRequerido(t *testing.T) {
 }
 
 func TestVentaService_Create_AsientoRequerido(t *testing.T) {
-	s := &VentaServiceImpl{repo: &fakeRepo{}}
+	s := &VentaServiceImpl{repo: &fakeRepo{}, asientoTramoSvc: &fakeAsientoTramoSvc{}}
 	in := input.VentaCreateInput{
 		IDUsuario: 1, IDTipoComprobante: 1,
 		IDProgramacion: 10, IDPasajero: 20, IDAsiento: 0, Precio: 100,
@@ -209,7 +249,7 @@ func TestVentaService_Create_AsientoRequerido(t *testing.T) {
 }
 
 func TestVentaService_Create_DescuentoInvalido(t *testing.T) {
-	s := &VentaServiceImpl{repo: &fakeRepo{}}
+	s := &VentaServiceImpl{repo: &fakeRepo{}, asientoTramoSvc: &fakeAsientoTramoSvc{}}
 	desc := 200.0 // mayor al precio
 	in := input.VentaCreateInput{
 		IDUsuario: 1, IDTipoComprobante: 1,
@@ -223,18 +263,34 @@ func TestVentaService_Create_DescuentoInvalido(t *testing.T) {
 }
 
 func TestVentaService_Create_ErrorCorrelativo(t *testing.T) {
-	s := &VentaServiceImpl{repo: &fakeRepo{nextCorrelativoErr: errors.New("db error")}}
-	_, err := s.Create(ventaInput(1, 100))
+	s := &VentaServiceImpl{repo: &fakeRepo{nextCorrelativoErr: errors.New("db error")}, asientoTramoSvc: &fakeAsientoTramoSvc{}}
+	_, err := s.Create(createVentaInput(1, 100))
 	if err == nil {
 		t.Error("debe fallar si no se puede obtener el correlativo")
 	}
 }
 
 func TestVentaService_Create_ErrorRepo(t *testing.T) {
-	s := &VentaServiceImpl{repo: &fakeRepo{createErr: errors.New("fail")}}
-	_, err := s.Create(ventaInput(1, 100))
+	s := &VentaServiceImpl{repo: &fakeRepo{createErr: errors.New("fail")}, asientoTramoSvc: &fakeAsientoTramoSvc{isDisponible: true}}
+	_, err := s.Create(createVentaInput(1, 100))
 	if err == nil {
 		t.Error("debe fallar si el repo falla al crear")
+	}
+}
+
+func TestVentaService_Create_AsientoNoDisponible(t *testing.T) {
+	s := &VentaServiceImpl{repo: &fakeRepo{nextCorrelativo: 1}, asientoTramoSvc: &fakeAsientoTramoSvc{isDisponible: false}}
+	_, err := s.Create(createVentaInput(1, 100))
+	if err == nil {
+		t.Error("debe fallar si el asiento no está disponible")
+	}
+}
+
+func TestVentaService_Create_ErrorMarkAsOccupied(t *testing.T) {
+	s := &VentaServiceImpl{repo: &fakeRepo{nextCorrelativo: 1}, asientoTramoSvc: &fakeAsientoTramoSvc{isDisponible: true, markOccupiedErr: errors.New("fail")}}
+	_, err := s.Create(createVentaInput(1, 100))
+	if err == nil {
+		t.Error("debe fallar si falla al marcar asiento como ocupado")
 	}
 }
 
@@ -244,7 +300,7 @@ func TestVentaService_Create_ErrorRepo(t *testing.T) {
 
 func TestVentaService_Update_OK(t *testing.T) {
 	venta := domain.Venta{IDVenta: 1, Nota: "old"}
-	s := &VentaServiceImpl{repo: &fakeRepo{venta: venta}}
+	s := &VentaServiceImpl{repo: &fakeRepo{venta: venta}, asientoTramoSvc: &fakeAsientoTramoSvc{}}
 	out, err := s.Update(1, input.VentaUpdateInput{Nota: "nueva", Observaciones: "obs"})
 	if err != nil {
 		t.Fatalf("no se esperaba error: %v", err)
@@ -255,7 +311,7 @@ func TestVentaService_Update_OK(t *testing.T) {
 }
 
 func TestVentaService_Update_NoEncontrado(t *testing.T) {
-	s := &VentaServiceImpl{repo: &fakeRepo{getByIDErr: errors.New("not found")}}
+	s := &VentaServiceImpl{repo: &fakeRepo{getByIDErr: errors.New("not found")}, asientoTramoSvc: &fakeAsientoTramoSvc{}}
 	_, err := s.Update(99, input.VentaUpdateInput{Nota: "x"})
 	if err == nil {
 		t.Error("debe fallar si la venta no existe")
@@ -267,19 +323,28 @@ func TestVentaService_Update_NoEncontrado(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestVentaService_Delete_OK(t *testing.T) {
-	s := &VentaServiceImpl{repo: &fakeRepo{}}
+	venta := domain.Venta{IDVenta: 1, IDAsiento: 5, IDTramo: 2}
+	s := &VentaServiceImpl{repo: &fakeRepo{venta: venta}, asientoTramoSvc: &fakeAsientoTramoSvc{}}
 	if err := s.Delete(1); err != nil {
 		t.Errorf("no se esperaba error al eliminar: %v", err)
 	}
 }
 
 func TestVentaService_Delete_Error(t *testing.T) {
-	s := &VentaServiceImpl{repo: &fakeRepo{deleteErr: errors.New("fail")}}
+	venta := domain.Venta{IDVenta: 1, IDAsiento: 5, IDTramo: 2}
+	s := &VentaServiceImpl{repo: &fakeRepo{venta: venta, deleteErr: errors.New("fail")}, asientoTramoSvc: &fakeAsientoTramoSvc{}}
 	if err := s.Delete(1); err == nil {
 		t.Error("debe retornar error si falla repo.Delete")
 	}
 }
 
+func TestVentaService_Delete_ErrorMarkAsAvailable(t *testing.T) {
+	venta := domain.Venta{IDVenta: 1, IDAsiento: 5, IDTramo: 2}
+	s := &VentaServiceImpl{repo: &fakeRepo{venta: venta}, asientoTramoSvc: &fakeAsientoTramoSvc{markAvailableErr: errors.New("fail")}}
+	if err := s.Delete(1); err == nil {
+		t.Error("debe retornar error si falla marcar asiento como disponible")
+	}
+}
 
 // ---------------------------------------------------------------------------
 // Tests GetByID
@@ -287,7 +352,7 @@ func TestVentaService_Delete_Error(t *testing.T) {
 
 func TestVentaService_GetByID_OK(t *testing.T) {
 	venta := domain.Venta{IDVenta: 1, Serie: "F001", Correlativo: 10}
-	s := &VentaServiceImpl{repo: &fakeRepo{venta: venta}}
+	s := &VentaServiceImpl{repo: &fakeRepo{venta: venta}, asientoTramoSvc: &fakeAsientoTramoSvc{}}
 	out, err := s.GetByID(1)
 	if err != nil {
 		t.Fatalf("no se esperaba error: %v", err)
@@ -298,7 +363,7 @@ func TestVentaService_GetByID_OK(t *testing.T) {
 }
 
 func TestVentaService_GetByID_Error(t *testing.T) {
-	s := &VentaServiceImpl{repo: &fakeRepo{getByIDErr: errors.New("fail")}}
+	s := &VentaServiceImpl{repo: &fakeRepo{getByIDErr: errors.New("fail")}, asientoTramoSvc: &fakeAsientoTramoSvc{}}
 	_, err := s.GetByID(1)
 	if err == nil {
 		t.Error("debe retornar error si falla repo.GetByID")
@@ -311,7 +376,7 @@ func TestVentaService_GetByID_Error(t *testing.T) {
 
 func TestVentaService_List_OK(t *testing.T) {
 	ventas := []domain.Venta{{IDVenta: 1}, {IDVenta: 2}}
-	s := &VentaServiceImpl{repo: &fakeRepo{ventas: ventas}}
+	s := &VentaServiceImpl{repo: &fakeRepo{ventas: ventas}, asientoTramoSvc: &fakeAsientoTramoSvc{}}
 	out, _, err := s.List(1, 15)
 	if err != nil {
 		t.Fatalf("no se esperaba error: %v", err)
@@ -322,7 +387,7 @@ func TestVentaService_List_OK(t *testing.T) {
 }
 
 func TestVentaService_List_Error(t *testing.T) {
-	s := &VentaServiceImpl{repo: &fakeRepo{listErr: errors.New("fail")}}
+	s := &VentaServiceImpl{repo: &fakeRepo{listErr: errors.New("fail")}, asientoTramoSvc: &fakeAsientoTramoSvc{}}
 	_, _, err := s.List(1, 15)
 	if err == nil {
 		t.Error("debe retornar error si falla repo.List")

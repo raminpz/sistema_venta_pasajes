@@ -12,7 +12,7 @@ type ParadaRepository interface {
 	Delete(id int64) error
 	GetByID(id int64) (*domain.Parada, error)
 	ListByRuta(idRuta int64) ([]domain.Parada, error)
-	ExistsByRutaTerminal(idRuta, idTerminal int64) (bool, error)
+	ExistsByRutaNombre(idRuta int64, nombreParada string) (bool, error)
 	ExistsByRutaOrden(idRuta int64, orden int) (bool, error)
 	GetOrdenByID(idParada int64) (int, error)
 }
@@ -58,10 +58,10 @@ func (r *paradaRepository) ListByRuta(idRuta int64) ([]domain.Parada, error) {
 	return paradas, err
 }
 
-func (r *paradaRepository) ExistsByRutaTerminal(idRuta, idTerminal int64) (bool, error) {
+func (r *paradaRepository) ExistsByRutaNombre(idRuta int64, nombreParada string) (bool, error) {
 	var count int64
 	err := r.db.Model(&domain.Parada{}).
-		Where("ID_RUTA = ? AND ID_TERMINAL = ?", idRuta, idTerminal).
+		Where("ID_RUTA = ? AND NOMBRE_PARADA = ?", idRuta, nombreParada).
 		Count(&count).Error
 	return count > 0, err
 }
@@ -81,4 +81,3 @@ func (r *paradaRepository) GetOrdenByID(idParada int64) (int, error) {
 	}
 	return p.Orden, nil
 }
-

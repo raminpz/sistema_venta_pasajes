@@ -28,16 +28,18 @@ func NewParadaService(repo repository.ParadaRepository) ParadaService {
 }
 
 func (s *paradaService) Create(in input.CreateParadaInput) (*input.ParadaOutput, error) {
+	pkg.TrimSpacesOnStruct(&in)
+	in.NombreParada = pkg.CapitalizeWords(in.NombreParada)
 	if err := util.ValidarCamposCreate(in); err != nil {
 		return nil, err
 	}
 
-	existsTerminal, err := s.repo.ExistsByRutaTerminal(in.IDRuta, in.IDTerminal)
+	existsNombre, err := s.repo.ExistsByRutaNombre(in.IDRuta, in.NombreParada)
 	if err != nil {
 		return nil, pkg.Internal(err.Error())
 	}
-	if existsTerminal {
-		return nil, pkg.BadRequest("duplicate_terminal", util.ERR_DUPLICATE)
+	if existsNombre {
+		return nil, pkg.BadRequest("duplicate_nombre_parada", util.ERR_DUPLICATE)
 	}
 
 	existsOrden, err := s.repo.ExistsByRutaOrden(in.IDRuta, in.Orden)
@@ -49,14 +51,14 @@ func (s *paradaService) Create(in input.CreateParadaInput) (*input.ParadaOutput,
 	}
 
 	parada := &domain.Parada{
-		IDRuta:     in.IDRuta,
-		IDTerminal: in.IDTerminal,
-		Orden:      in.Orden,
+		IDRuta:       in.IDRuta,
+		NombreParada: in.NombreParada,
+		Orden:        in.Orden,
 	}
 	if err := s.repo.Create(parada); err != nil {
 		return nil, pkg.ParseDBError(err, "db_error", "Error al crear la parada",
-			map[string]string{"FK_PARADA_RUTA": "La ruta indicada no existe", "FK_PARADA_TERMINAL": "El terminal indicado no existe"},
-			map[string]string{"UQ_PARADA_RUTA_TERMINAL": util.ERR_DUPLICATE, "UQ_PARADA_RUTA_ORDEN": util.ERR_DUPLICATE_ORDEN},
+			map[string]string{"FK_PARADA_RUTA": "La ruta indicada no existe"},
+			map[string]string{"UQ_PARADA_RUTA_NOMBRE": util.ERR_DUPLICATE, "UQ_PARADA_RUTA_TERMINAL": util.ERR_DUPLICATE, "UQ_PARADA_RUTA_ORDEN": util.ERR_DUPLICATE_ORDEN},
 		)
 	}
 	return mapOutput(parada), nil
@@ -75,15 +77,16 @@ func (s *paradaService) Update(in input.UpdateParadaInput) (*input.ParadaOutput,
 		return nil, pkg.Internal(err.Error())
 	}
 
-	if in.IDTerminal != nil {
-		existsTerminal, err := s.repo.ExistsByRutaTerminal(parada.IDRuta, *in.IDTerminal)
+	if in.NombreParada != nil {
+		normalized := pkg.CapitalizeWords(*in.NombreParada)
+		existsNombre, err := s.repo.ExistsByRutaNombre(parada.IDRuta, normalized)
 		if err != nil {
 			return nil, pkg.Internal(err.Error())
 		}
-		if existsTerminal {
-			return nil, pkg.BadRequest("duplicate_terminal", util.ERR_DUPLICATE)
+		if existsNombre && parada.NombreParada != normalized {
+			return nil, pkg.BadRequest("duplicate_nombre_parada", util.ERR_DUPLICATE)
 		}
-		parada.IDTerminal = *in.IDTerminal
+		parada.NombreParada = normalized
 	}
 	if in.Orden != nil {
 		existsOrden, err := s.repo.ExistsByRutaOrden(parada.IDRuta, *in.Orden)
@@ -147,10 +150,9 @@ func (s *paradaService) ListByRuta(idRuta int64) ([]input.ParadaOutput, error) {
 
 func mapOutput(p *domain.Parada) *input.ParadaOutput {
 	return &input.ParadaOutput{
-		IDParada:   p.IDParada,
-		IDRuta:     p.IDRuta,
-		IDTerminal: p.IDTerminal,
-		Orden:      p.Orden,
+		IDParada:     p.IDParada,
+		IDRuta:       p.IDRuta,
+		NombreParada: p.NombreParada,
+		Orden:        p.Orden,
 	}
 }
-

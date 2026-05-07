@@ -56,9 +56,9 @@ func (m *mockParadaRepo) ListByRuta(idRuta int64) ([]domain.Parada, error) {
 	}
 	return list, nil
 }
-func (m *mockParadaRepo) ExistsByRutaTerminal(idRuta, idTerminal int64) (bool, error) {
+func (m *mockParadaRepo) ExistsByRutaNombre(idRuta int64, nombreParada string) (bool, error) {
 	for _, p := range m.paradas {
-		if p.IDRuta == idRuta && p.IDTerminal == idTerminal {
+		if p.IDRuta == idRuta && p.NombreParada == nombreParada {
 			return true, nil
 		}
 	}
@@ -84,49 +84,49 @@ func (m *mockParadaRepo) GetOrdenByID(idParada int64) (int, error) {
 
 func TestParada_Create_OK(t *testing.T) {
 	svc := NewParadaService(newMock())
-	out, err := svc.Create(input.CreateParadaInput{IDRuta: 1, IDTerminal: 1, Orden: 1})
+	out, err := svc.Create(input.CreateParadaInput{IDRuta: 1, NombreParada: "Huanta", Orden: 1})
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), out.IDParada)
 }
 
 func TestParada_Create_SinRuta(t *testing.T) {
 	svc := NewParadaService(newMock())
-	_, err := svc.Create(input.CreateParadaInput{IDRuta: 0, IDTerminal: 1, Orden: 1})
+	_, err := svc.Create(input.CreateParadaInput{IDRuta: 0, NombreParada: "Huanta", Orden: 1})
 	assert.Error(t, err)
 }
 
-func TestParada_Create_SinTerminal(t *testing.T) {
+func TestParada_Create_SinNombreParada(t *testing.T) {
 	svc := NewParadaService(newMock())
-	_, err := svc.Create(input.CreateParadaInput{IDRuta: 1, IDTerminal: 0, Orden: 1})
+	_, err := svc.Create(input.CreateParadaInput{IDRuta: 1, NombreParada: "", Orden: 1})
 	assert.Error(t, err)
 }
 
 func TestParada_Create_OrdenCero(t *testing.T) {
 	svc := NewParadaService(newMock())
-	_, err := svc.Create(input.CreateParadaInput{IDRuta: 1, IDTerminal: 1, Orden: 0})
+	_, err := svc.Create(input.CreateParadaInput{IDRuta: 1, NombreParada: "Huanta", Orden: 0})
 	assert.Error(t, err)
 }
 
-func TestParada_Create_DuplicadoTerminal(t *testing.T) {
+func TestParada_Create_DuplicadoNombre(t *testing.T) {
 	repo := newMock()
 	svc := NewParadaService(repo)
-	_, _ = svc.Create(input.CreateParadaInput{IDRuta: 1, IDTerminal: 5, Orden: 1})
-	_, err := svc.Create(input.CreateParadaInput{IDRuta: 1, IDTerminal: 5, Orden: 2})
+	_, _ = svc.Create(input.CreateParadaInput{IDRuta: 1, NombreParada: "Huanta", Orden: 1})
+	_, err := svc.Create(input.CreateParadaInput{IDRuta: 1, NombreParada: "Huanta", Orden: 2})
 	assert.Error(t, err)
 }
 
 func TestParada_Create_DuplicadoOrden(t *testing.T) {
 	repo := newMock()
 	svc := NewParadaService(repo)
-	_, _ = svc.Create(input.CreateParadaInput{IDRuta: 1, IDTerminal: 1, Orden: 1})
-	_, err := svc.Create(input.CreateParadaInput{IDRuta: 1, IDTerminal: 2, Orden: 1})
+	_, _ = svc.Create(input.CreateParadaInput{IDRuta: 1, NombreParada: "Huanta", Orden: 1})
+	_, err := svc.Create(input.CreateParadaInput{IDRuta: 1, NombreParada: "Izcuchaca", Orden: 1})
 	assert.Error(t, err)
 }
 
 func TestParada_GetByID_OK(t *testing.T) {
 	repo := newMock()
 	svc := NewParadaService(repo)
-	_, _ = svc.Create(input.CreateParadaInput{IDRuta: 1, IDTerminal: 1, Orden: 1})
+	_, _ = svc.Create(input.CreateParadaInput{IDRuta: 1, NombreParada: "Huanta", Orden: 1})
 	out, err := svc.GetByID(1)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), out.IDParada)
@@ -142,11 +142,11 @@ func TestParada_GetByID_NotFound(t *testing.T) {
 func TestParada_Update_OK(t *testing.T) {
 	repo := newMock()
 	svc := NewParadaService(repo)
-	_, _ = svc.Create(input.CreateParadaInput{IDRuta: 1, IDTerminal: 1, Orden: 1})
-	orden := 2
-	out, err := svc.Update(input.UpdateParadaInput{IDParada: 1, Orden: &orden})
+	_, _ = svc.Create(input.CreateParadaInput{IDRuta: 1, NombreParada: "Huanta", Orden: 1})
+	nombreParada := "Huamanga"
+	out, err := svc.Update(input.UpdateParadaInput{IDParada: 1, NombreParada: &nombreParada})
 	assert.NoError(t, err)
-	assert.Equal(t, 2, out.Orden)
+	assert.Equal(t, "Huamanga", out.NombreParada)
 }
 
 func TestParada_Update_EmptyFields(t *testing.T) {
@@ -158,7 +158,7 @@ func TestParada_Update_EmptyFields(t *testing.T) {
 func TestParada_Delete_OK(t *testing.T) {
 	repo := newMock()
 	svc := NewParadaService(repo)
-	_, _ = svc.Create(input.CreateParadaInput{IDRuta: 1, IDTerminal: 1, Orden: 1})
+	_, _ = svc.Create(input.CreateParadaInput{IDRuta: 1, NombreParada: "Huanta", Orden: 1})
 	err := svc.Delete(1)
 	assert.NoError(t, err)
 }
@@ -172,9 +172,9 @@ func TestParada_Delete_NotFound(t *testing.T) {
 func TestParada_ListByRuta_OK(t *testing.T) {
 	repo := newMock()
 	svc := NewParadaService(repo)
-	_, _ = svc.Create(input.CreateParadaInput{IDRuta: 1, IDTerminal: 1, Orden: 1})
-	_, _ = svc.Create(input.CreateParadaInput{IDRuta: 1, IDTerminal: 2, Orden: 2})
-	_, _ = svc.Create(input.CreateParadaInput{IDRuta: 2, IDTerminal: 3, Orden: 1})
+	_, _ = svc.Create(input.CreateParadaInput{IDRuta: 1, NombreParada: "Huanta", Orden: 1})
+	_, _ = svc.Create(input.CreateParadaInput{IDRuta: 1, NombreParada: "Izcuchaca", Orden: 2})
+	_, _ = svc.Create(input.CreateParadaInput{IDRuta: 2, NombreParada: "Huancayo", Orden: 1})
 	list, err := svc.ListByRuta(1)
 	assert.NoError(t, err)
 	assert.Len(t, list, 2)
@@ -186,4 +186,3 @@ func TestParada_ListByRuta_Vacia(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Empty(t, list)
 }
-

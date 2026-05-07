@@ -4,8 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	asientoTramoService "sistema_venta_pasajes/internal/asiento_tramo/service"
 	"sistema_venta_pasajes/internal/venta/domain"
-	"sistema_venta_pasajes/internal/venta/input"
+	ventaInput "sistema_venta_pasajes/internal/venta/input"
 	"sistema_venta_pasajes/internal/venta/repository"
 	"sistema_venta_pasajes/internal/venta/util"
 	"sistema_venta_pasajes/pkg"
@@ -14,25 +15,26 @@ import (
 )
 
 type VentaService interface {
-	Create(in input.VentaCreateInput) (*input.VentaOutput, error)
-	Update(id int64, in input.VentaUpdateInput) (*input.VentaOutput, error)
+	Create(in ventaInput.VentaCreateInput) (*ventaInput.VentaOutput, error)
+	Update(id int64, in ventaInput.VentaUpdateInput) (*ventaInput.VentaOutput, error)
 	Delete(id int64) error
-	GetByID(id int64) (*input.VentaOutput, error)
-	List(page, size int) ([]input.VentaOutput, int, error)
+	GetByID(id int64) (*ventaInput.VentaOutput, error)
+	List(page, size int) ([]ventaInput.VentaOutput, int, error)
 }
 
 type VentaServiceImpl struct {
-	repo repository.VentaRepository
+	repo            repository.VentaRepository
+	asientoTramoSvc asientoTramoService.AsientoTramoService
 }
 
-func NewVentaService(repo repository.VentaRepository) VentaService {
-	return &VentaServiceImpl{repo: repo}
+func NewVentaService(repo repository.VentaRepository, asientoTramoSvc asientoTramoService.AsientoTramoService) VentaService {
+	return &VentaServiceImpl{repo: repo, asientoTramoSvc: asientoTramoSvc}
 }
 
 const layoutDateTime = "2006-01-02 15:04:05"
 
-func toVentaOutput(v *domain.Venta) *input.VentaOutput {
-	return &input.VentaOutput{
+func toVentaOutput(v *domain.Venta) *ventaInput.VentaOutput {
+	return &ventaInput.VentaOutput{
 		IDVenta:           v.IDVenta,
 		IDUsuario:         v.IDUsuario,
 		IDTipoComprobante: v.IDTipoComprobante,
@@ -56,7 +58,7 @@ func toVentaOutput(v *domain.Venta) *input.VentaOutput {
 	}
 }
 
-func (s *VentaServiceImpl) Create(in input.VentaCreateInput) (*input.VentaOutput, error) {
+func (s *VentaServiceImpl) Create(in ventaInput.VentaCreateInput) (*ventaInput.VentaOutput, error) {
 	pkg.TrimSpacesOnStruct(&in)
 
 	if err := util.ValidarCreateInput(
@@ -67,8 +69,8 @@ func (s *VentaServiceImpl) Create(in input.VentaCreateInput) (*input.VentaOutput
 		return nil, err
 	}
 
-	// Validar disponibilidad del asiento en el tramo (solapamiento)
-	disponible, err := s.repo.IsAsientoDisponible(in.IDProgramacion, in.IDAsiento, in.IDTramo)
+	// Validar disponibilidad del asiento en el tramo
+	disponible, err := s.asientoTramoSvc.IsAsientoDisponible(in.IDAsiento, in.IDTramo)
 	if err != nil {
 		return nil, pkg.NewAppError(500, util.ERR_CODE_CREATE, util.MSG_VENTA_CREATE_ERROR).WithCause(err)
 	}
@@ -131,10 +133,18 @@ func (s *VentaServiceImpl) Create(in input.VentaCreateInput) (*input.VentaOutput
 	if err := s.repo.Create(venta); err != nil {
 		return nil, util.ParseDBError(err, util.ERR_CODE_CREATE, util.MSG_VENTA_CREATE_ERROR)
 	}
+
+	// Marcar asiento como ocupado en el tramo
+	if err := s.asientoTramoSvc.MarkAsOccupied(in.IDAsiento, in.IDTramo, &venta.IDVenta); err != nil {
+		// Si falla, eliminar la venta creada
+		_ = s.repo.Delete(venta.IDVenta)
+		return nil, pkg.NewAppError(500, util.ERR_CODE_CREATE, util.MSG_VENTA_CREATE_ERROR).WithCause(err)
+	}
+
 	return toVentaOutput(venta), nil
 }
 
-func (s *VentaServiceImpl) Update(id int64, in input.VentaUpdateInput) (*input.VentaOutput, error) {
+func (s *VentaServiceImpl) Update(id int64, in ventaInput.VentaUpdateInput) (*ventaInput.VentaOutput, error) {
 	venta, err := s.repo.GetByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -156,7 +166,7 @@ func (s *VentaServiceImpl) Delete(id int64) error {
 	if id <= 0 {
 		return pkg.BadRequest(util.ERR_CODE_INVALID_ID, util.MSG_VENTA_NOT_FOUND)
 	}
-	_, err := s.repo.GetByID(id)
+	venta, err := s.repo.GetByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return pkg.NotFound(util.ERR_CODE_NOT_FOUND, util.MSG_VENTA_NOT_FOUND)
@@ -164,6 +174,10 @@ func (s *VentaServiceImpl) Delete(id int64) error {
 		return pkg.NewAppError(http.StatusInternalServerError, util.ERR_CODE_DELETE, util.MSG_VENTA_DELETE_ERROR).WithCause(err)
 	}
 
+	// Liberar asiento en el tramo
+	if err := s.asientoTramoSvc.MarkAsAvailable(venta.IDAsiento, venta.IDTramo); err != nil {
+		return pkg.NewAppError(http.StatusInternalServerError, util.ERR_CODE_DELETE, util.MSG_VENTA_DELETE_ERROR).WithCause(err)
+	}
 
 	if err := s.repo.Delete(id); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -174,7 +188,7 @@ func (s *VentaServiceImpl) Delete(id int64) error {
 	return nil
 }
 
-func (s *VentaServiceImpl) GetByID(id int64) (*input.VentaOutput, error) {
+func (s *VentaServiceImpl) GetByID(id int64) (*ventaInput.VentaOutput, error) {
 	if id <= 0 {
 		return nil, pkg.BadRequest(util.ERR_CODE_INVALID_ID, util.MSG_VENTA_NOT_FOUND)
 	}
@@ -188,13 +202,13 @@ func (s *VentaServiceImpl) GetByID(id int64) (*input.VentaOutput, error) {
 	return toVentaOutput(venta), nil
 }
 
-func (s *VentaServiceImpl) List(page, size int) ([]input.VentaOutput, int, error) {
+func (s *VentaServiceImpl) List(page, size int) ([]ventaInput.VentaOutput, int, error) {
 	offset, limit, _ := pkg.Paginate(page, size, 0)
 	ventas, total, err := s.repo.List(offset, limit)
 	if err != nil {
 		return nil, 0, pkg.NewAppError(http.StatusInternalServerError, util.ERR_CODE_LIST, util.MSG_VENTA_LIST_ERROR).WithCause(err)
 	}
-	outs := make([]input.VentaOutput, 0, len(ventas))
+	outs := make([]ventaInput.VentaOutput, 0, len(ventas))
 	for _, v := range ventas {
 		vCopy := v
 		outs = append(outs, *toVentaOutput(&vCopy))

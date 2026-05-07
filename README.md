@@ -40,6 +40,7 @@ sistema_venta_pasajes/
 │   ├── tramo/
 │   ├── vehiculo/
 │   ├── asiento/
+│   ├── asiento_tramo/
 │   ├── pasajero/
 │   ├── usuario/
 │   ├── programacion/
@@ -101,6 +102,42 @@ La tabla `CONTROL_ACCESO` define estado operativo:
 - `SOLO_LECTURA`: solo `GET`
 - `BLOQUEADO`: bloquea toda operación funcional
 
+## Modelo de ruta, parada y tramo
+- `TERMINAL`: se usa para definir solo terminal de origen y terminal de destino final de la `RUTA`.
+- `PARADA`: representa puntos intermedios de una ruta con `nombre_parada` y `orden`.
+- `TRAMO`: representa segmentos vendibles entre dos paradas (`id_parada_origen` y `id_parada_destino`).
+
+## Disponibilidad de asientos por tramo
+- La ocupación de asientos se controla por tramo (no de forma global por vehículo).
+- `ASIENTO_TRAMO` registra el estado de cada asiento en cada tramo (`DISPONIBLE` u `OCUPADO`).
+- Al crear una `VENTA`, el backend valida disponibilidad en el tramo y marca ocupación.
+- Al eliminar/anular la `VENTA`, el backend libera el asiento en el tramo correspondiente.
+- Esto permite reutilizar el mismo asiento en tramos distintos de una misma ruta.
+
+## Convención de rutas
+- Base API protegida: `/api/v1`
+- Módulos principales usan rutas de colección y por ID según su `register.go`.
+- Ejemplos de colección: `/api/v1/proveedor`, `/api/v1/empresa`, `/api/v1/vehiculos`, `/api/v1/venta`.
+- Estado del sistema público: `/api/v1/control-acceso/status`.
+
+Ejemplo de `PARADA` en API:
+```json
+{
+  "id_ruta": 1,
+  "nombre_parada": "Huanta",
+  "orden": 2
+}
+```
+
+Ejemplo de `TRAMO` en API:
+```json
+{
+  "id_ruta": 1,
+  "id_parada_origen": 10,
+  "id_parada_destino": 12
+}
+```
+
 ## Diagrama de base de datos (modelo operativo)
 ```mermaid
 erDiagram
@@ -109,6 +146,7 @@ erDiagram
   TERMINAL ||--o{ RUTA : "destino"
   TIPO_VEHICULO ||--o{ VEHICULO : "clasifica"
   VEHICULO ||--o{ ASIENTO : "tiene"
+  ASIENTO ||--o{ ASIENTO_TRAMO : "disponibilidad por tramo"
   RUTA ||--o{ PROGRAMACION : "programa"
   VEHICULO ||--o{ PROGRAMACION : "opera"
   CONDUCTOR ||--o{ PROGRAMACION : "conduce"
@@ -121,6 +159,8 @@ erDiagram
   PASAJERO ||--o{ VENTA : "titular"
   PROGRAMACION ||--o{ VENTA : "viaje"
   TRAMO ||--o{ VENTA : "segmenta"
+  TRAMO ||--o{ ASIENTO_TRAMO : "segmenta disponibilidad"
+  VENTA ||--o{ ASIENTO_TRAMO : "reserva"
 
   VENTA ||--o{ PAGO : "pagos"
   METODO_PAGO ||--o{ PAGO : "metodo"

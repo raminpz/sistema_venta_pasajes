@@ -180,4 +180,38 @@ func TestProveedorSistemaDeleteRouteReturnsValidationErrorForInvalidID(t *testin
 	}
 }
 
-// Se eliminan los tests de empresa porque la funcionalidad fue removida y la variable 'request' no está definida
+func TestCoreModuleRoutesAreMountedUnderAPIV1(t *testing.T) {
+	// skipAuth=true para validar exclusivamente montaje de rutas y evitar 401/403 en test.
+	router := NewRouter(nil, testJWTSecret, true)
+
+	paths := []string{
+		"/api/v1/proveedor",
+		"/api/v1/empresa",
+		"/api/v1/conductor",
+		"/api/v1/terminal",
+		"/api/v1/ruta",
+		"/api/v1/tramos",
+		"/api/v1/paradas/ruta/1",
+		"/api/v1/vehiculos",
+		"/api/v1/pasajeros",
+		"/api/v1/programacion",
+		"/api/v1/pago",
+		"/api/v1/encomienda",
+		"/api/v1/venta",
+		"/api/v1/liquidaciones",
+		"/api/v1/usuario",
+	}
+
+	for _, path := range paths {
+		t.Run(path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			resp := httptest.NewRecorder()
+
+			router.ServeHTTP(resp, req)
+
+			if resp.Code == http.StatusNotFound {
+				t.Fatalf("la ruta %s no está montada en el router (404)", path)
+			}
+		})
+	}
+}
