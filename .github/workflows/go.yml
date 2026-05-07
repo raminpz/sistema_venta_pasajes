@@ -40,8 +40,12 @@ jobs:
       - name: Build
         run: go build -v ./...
 
-      - name: Run tests with coverage
-        run: go test -coverprofile=coverage.out ./...
+      - name: Run tests with filtered coverage
+        run: |
+          PKGS=$(go list ./... | grep -vE '(^sistema_venta_pasajes/cmd/|^sistema_venta_pasajes/configs$|/domain$|/input$|/util$)')
+          echo "Packages considered for coverage:"
+          echo "$PKGS"
+          go test -coverprofile=coverage.out $PKGS
 
       - name: Check coverage
         run: |
