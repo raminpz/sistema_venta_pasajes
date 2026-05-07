@@ -1,4 +1,4 @@
-﻿package repository
+package repository
 
 import (
 	"sistema_venta_pasajes/internal/liquidacion/domain"

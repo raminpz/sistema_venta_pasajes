@@ -1,4 +1,4 @@
-﻿package handler
+package handler
 import (
 "github.com/gorilla/mux"
 "gorm.io/gorm"

@@ -1,4 +1,4 @@
-﻿package util
+package util
 const (
 ERR_INVALID_JSON           = "El cuerpo JSON no tiene un formato valido"
 ERR_INVALID_ID             = "El ID proporcionado no es valido"

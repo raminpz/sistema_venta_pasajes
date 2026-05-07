@@ -1,4 +1,4 @@
-﻿package service
+package service
 
 import (
 	"sistema_venta_pasajes/internal/liquidacion/domain"
