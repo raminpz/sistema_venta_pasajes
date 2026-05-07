@@ -17,6 +17,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check files without UTF-8 BOM
+        run: |
+          if grep -RIl $'\xEF\xBB\xBF' \
+            --exclude-dir=.git \
+            --include='*.go' \
+            --include='*.mod' \
+            --include='*.sum' \
+            --include='*.yml' \
+            --include='*.yaml' \
+            --include='*.md' \
+            .; then
+            echo "BOM detectado en archivos de texto. Guardar como UTF-8 sin BOM."
+            exit 1
+          fi
+
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
