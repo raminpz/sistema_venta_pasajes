@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sistema_venta_pasajes/internal/asiento/domain"
@@ -151,4 +152,104 @@ func TestAsientoHandler_CambiarEstado(t *testing.T) {
 // muxSetVars simula la inyección de variables de ruta en mux
 func muxSetVars(r *http.Request, vars map[string]string) *http.Request {
 	return mux.SetURLVars(r, vars)
+}
+
+func TestAsientoHandler_ErrorBranches(t *testing.T) {
+	h := New(&mockService{
+		CreateFn:         func(input.CreateAsientoInput) (*domain.Asiento, error) { return nil, errors.New("boom") },
+		GetByIDFn:        func(int64) (*domain.Asiento, error) { return nil, errors.New("boom") },
+		ListByVehiculoFn: func(int64) ([]*domain.Asiento, error) { return nil, errors.New("boom") },
+		UpdateFn:         func(int64, input.UpdateAsientoInput) error { return errors.New("boom") },
+		DeleteFn:         func(int64) error { return errors.New("boom") },
+		CambiarEstadoFn:  func(int64, string) error { return errors.New("boom") },
+	})
+
+	t.Run("create invalid json", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/asiento", bytes.NewBufferString("{"))
+		rw := httptest.NewRecorder()
+		h.Create(rw, req)
+		if rw.Code != http.StatusBadRequest {
+			t.Fatalf("status esperado 400, obtenido %d", rw.Code)
+		}
+	})
+
+	t.Run("create service error", func(t *testing.T) {
+		body := []byte(`{"id_vehiculo":1,"numero_asiento":"A1","estado":"DISPONIBLE"}`)
+		req := httptest.NewRequest(http.MethodPost, "/asiento", bytes.NewReader(body))
+		rw := httptest.NewRecorder()
+		h.Create(rw, req)
+		if rw.Code != http.StatusInternalServerError {
+			t.Fatalf("status esperado 500, obtenido %d", rw.Code)
+		}
+	})
+
+	t.Run("get invalid id", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/asiento/abc", nil)
+		req = muxSetVars(req, map[string]string{"id": "abc"})
+		rw := httptest.NewRecorder()
+		h.GetByID(rw, req)
+		if rw.Code != http.StatusBadRequest {
+			t.Fatalf("status esperado 400, obtenido %d", rw.Code)
+		}
+	})
+
+	t.Run("list vehiculo invalid id", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/vehiculo/abc/asientos", nil)
+		req = muxSetVars(req, map[string]string{"id_vehiculo": "abc"})
+		rw := httptest.NewRecorder()
+		h.ListByVehiculo(rw, req)
+		if rw.Code != http.StatusBadRequest {
+			t.Fatalf("status esperado 400, obtenido %d", rw.Code)
+		}
+	})
+
+	t.Run("update invalid id", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPut, "/asiento/abc", bytes.NewBufferString(`{"estado":"OCUPADO"}`))
+		req = muxSetVars(req, map[string]string{"id": "abc"})
+		rw := httptest.NewRecorder()
+		h.Update(rw, req)
+		if rw.Code != http.StatusBadRequest {
+			t.Fatalf("status esperado 400, obtenido %d", rw.Code)
+		}
+	})
+
+	t.Run("update invalid json", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPut, "/asiento/1", bytes.NewBufferString("{"))
+		req = muxSetVars(req, map[string]string{"id": "1"})
+		rw := httptest.NewRecorder()
+		h.Update(rw, req)
+		if rw.Code != http.StatusBadRequest {
+			t.Fatalf("status esperado 400, obtenido %d", rw.Code)
+		}
+	})
+
+	t.Run("delete invalid id", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodDelete, "/asiento/abc", nil)
+		req = muxSetVars(req, map[string]string{"id": "abc"})
+		rw := httptest.NewRecorder()
+		h.Delete(rw, req)
+		if rw.Code != http.StatusBadRequest {
+			t.Fatalf("status esperado 400, obtenido %d", rw.Code)
+		}
+	})
+
+	t.Run("cambiar estado invalid id", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPatch, "/asiento/abc/estado", bytes.NewBufferString(`{"estado":"OCUPADO"}`))
+		req = muxSetVars(req, map[string]string{"id": "abc"})
+		rw := httptest.NewRecorder()
+		h.CambiarEstado(rw, req)
+		if rw.Code != http.StatusBadRequest {
+			t.Fatalf("status esperado 400, obtenido %d", rw.Code)
+		}
+	})
+
+	t.Run("cambiar estado invalido", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPatch, "/asiento/1/estado", bytes.NewBufferString(`{"estado":"X"}`))
+		req = muxSetVars(req, map[string]string{"id": "1"})
+		rw := httptest.NewRecorder()
+		h.CambiarEstado(rw, req)
+		if rw.Code != http.StatusBadRequest {
+			t.Fatalf("status esperado 400, obtenido %d", rw.Code)
+		}
+	})
 }

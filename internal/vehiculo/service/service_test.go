@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"gorm.io/gorm"
 )
 
 type MockVehiculoRepository struct {
@@ -128,3 +130,38 @@ func TestVehiculoService_Create_DuplicatePlaca(t *testing.T) {
 	assert.Nil(t, output)
 }
 
+func TestVehiculoService_Update_Get_Delete_List(t *testing.T) {
+	mockRepo := new(MockVehiculoRepository)
+	service := NewVehiculoService(mockRepo)
+
+	nombreMarca := "toyota"
+	nombreModelo := "coaster"
+	nuevaPlaca := "abC-123"
+	estado := "activo"
+	vehiculo := &vehiculodomain.Vehiculo{IDVehiculo: 1, NroPlaca: "ABC-111", Marca: "Toyota", Modelo: "Old", Estado: "ACTIVO"}
+
+	mockRepo.On("GetByID", int64(1)).Return(vehiculo, nil).Once()
+	mockRepo.On("Update", mock.Anything).Return(nil).Once()
+	out, err := service.Update(vehiculoinput.UpdateVehiculoInput{IDVehiculo: 1, NroPlaca: &nuevaPlaca, Marca: &nombreMarca, Modelo: &nombreModelo, Estado: &estado})
+	assert.NoError(t, err)
+	assert.Equal(t, "ABC-123", out.NroPlaca)
+
+	mockRepo.On("GetByID", int64(404)).Return((*vehiculodomain.Vehiculo)(nil), errors.New("not found")).Once()
+	_, err = service.GetByID(404)
+	assert.Error(t, err)
+
+	mockRepo.On("GetByID", int64(2)).Return(&vehiculodomain.Vehiculo{IDVehiculo: 2}, nil).Once()
+	mockRepo.On("Delete", int64(2)).Return(nil).Once()
+	err = service.Delete(2)
+	assert.NoError(t, err)
+
+	mockRepo.On("GetByID", int64(3)).Return((*vehiculodomain.Vehiculo)(nil), gorm.ErrRecordNotFound).Once()
+	err = service.Delete(3)
+	assert.Error(t, err)
+
+	mockRepo.On("List", 0, 15).Return([]vehiculodomain.Vehiculo{{IDVehiculo: 1, NroPlaca: "ABC-123", Modelo: "Coaster", Estado: "ACTIVO"}}, 1, nil).Once()
+	list, total, err := service.List(1, 15)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, total)
+	assert.Len(t, list, 1)
+}

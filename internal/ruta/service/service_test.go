@@ -6,15 +6,18 @@ import (
 	"reflect"
 	"sistema_venta_pasajes/internal/ruta/domain"
 	"sistema_venta_pasajes/internal/ruta/input"
+	"sistema_venta_pasajes/pkg"
 	"testing"
+
+	"gorm.io/gorm"
 )
 
 type mockRepo struct {
-	CreateFn          func(ruta *domain.Ruta) error
-	GetByIDFn         func(id int) (*domain.Ruta, error)
-	UpdateFn          func(ruta *domain.Ruta) error
-	DeleteFn          func(id int) error
-	ListFn            func() ([]domain.Ruta, error)
+	CreateFn  func(ruta *domain.Ruta) error
+	GetByIDFn func(id int) (*domain.Ruta, error)
+	UpdateFn  func(ruta *domain.Ruta) error
+	DeleteFn  func(id int) error
+	ListFn    func() ([]domain.Ruta, error)
 }
 
 func (m *mockRepo) Create(ruta *domain.Ruta) error       { return m.CreateFn(ruta) }
@@ -134,3 +137,63 @@ func TestService_List(t *testing.T) {
 }
 
 func ptrFloat(f float64) *float64 { return &f }
+
+func TestService_Create_DuplicateAndInternalError(t *testing.T) {
+	svcDuplicate := New(&mockRepo{
+		CreateFn: func(ruta *domain.Ruta) error {
+			return pkg.Conflict("duplicate_resource", "duplicado")
+		},
+	})
+	_, err := svcDuplicate.Create(context.Background(), input.CreateRutaInput{IDOrigenTerminal: 1, IDDestinoTerminal: 2, DuracionHoras: 1})
+	if err == nil {
+		t.Fatal("se esperaba error por duplicado")
+	}
+
+	svcInternal := New(&mockRepo{
+		CreateFn: func(ruta *domain.Ruta) error {
+			return errors.New("db down")
+		},
+	})
+	_, err = svcInternal.Create(context.Background(), input.CreateRutaInput{IDOrigenTerminal: 1, IDDestinoTerminal: 2, DuracionHoras: 1})
+	if err == nil {
+		t.Fatal("se esperaba error interno")
+	}
+}
+
+func TestService_UpdateAndListErrorBranches(t *testing.T) {
+	svc := New(&mockRepo{
+		GetByIDFn: func(id int) (*domain.Ruta, error) {
+			return &domain.Ruta{IDRuta: id, IDOrigenTerminal: 1, IDDestinoTerminal: 2, DuracionHoras: 2.5}, nil
+		},
+		UpdateFn: func(ruta *domain.Ruta) error {
+			return errors.New("update failed")
+		},
+		ListFn: func() ([]domain.Ruta, error) {
+			return nil, errors.New("db")
+		},
+	})
+
+	_, err := svc.Update(context.Background(), 1, input.UpdateRutaInput{DuracionHoras: ptrFloat(3.2)})
+	if err == nil {
+		t.Fatal("se esperaba error de update")
+	}
+
+	_, err = svc.List(context.Background())
+	if err == nil {
+		t.Fatal("se esperaba error en list")
+	}
+}
+
+func TestService_Delete_NotFoundByGorm(t *testing.T) {
+	svc := New(&mockRepo{
+		GetByIDFn: func(id int) (*domain.Ruta, error) {
+			return nil, gorm.ErrRecordNotFound
+		},
+		DeleteFn: func(id int) error { return nil },
+	})
+
+	err := svc.Delete(context.Background(), 1)
+	if err == nil {
+		t.Fatal("se esperaba not found")
+	}
+}

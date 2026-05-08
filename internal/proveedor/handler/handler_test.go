@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sistema_venta_pasajes/pkg"
@@ -175,4 +176,78 @@ func TestHandlerDeleteReturnsSuccessResponse(t *testing.T) {
 	if payload["message"] != "proveedor del sistema eliminado correctamente" {
 		t.Fatalf("mensaje inesperado: %#v", payload["message"])
 	}
+}
+
+func TestHandlerListGetUpdateAdditionalBranches(t *testing.T) {
+	t.Run("list ok", func(t *testing.T) {
+		h := NewHandler(fakeService{listFn: func(ctx context.Context) ([]domain.ProveedorSistema, error) {
+			return []domain.ProveedorSistema{{IDProveedor: 1, RUC: "20123456789", RazonSocial: "X"}}, nil
+		}})
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/proveedor", nil)
+		res := httptest.NewRecorder()
+		h.List(res, req)
+		if res.Code != http.StatusOK {
+			t.Fatalf("se esperaba 200, se obtuvo %d", res.Code)
+		}
+	})
+
+	t.Run("list error servicio", func(t *testing.T) {
+		h := NewHandler(fakeService{listFn: func(ctx context.Context) ([]domain.ProveedorSistema, error) {
+			return nil, errors.New("db")
+		}})
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/proveedor", nil)
+		res := httptest.NewRecorder()
+		h.List(res, req)
+		if res.Code != http.StatusInternalServerError {
+			t.Fatalf("se esperaba 500, se obtuvo %d", res.Code)
+		}
+	})
+
+	t.Run("get by id ok", func(t *testing.T) {
+		h := NewHandler(fakeService{getFn: func(ctx context.Context, id int64) (*domain.ProveedorSistema, error) {
+			return &domain.ProveedorSistema{IDProveedor: id, RUC: "20123456789"}, nil
+		}})
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/proveedor/1", nil)
+		req = mux.SetURLVars(req, map[string]string{"id": "1"})
+		res := httptest.NewRecorder()
+		h.GetByID(res, req)
+		if res.Code != http.StatusOK {
+			t.Fatalf("se esperaba 200, se obtuvo %d", res.Code)
+		}
+	})
+
+	t.Run("update json invalido", func(t *testing.T) {
+		h := NewHandler(fakeService{})
+		req := httptest.NewRequest(http.MethodPut, "/api/v1/proveedor/1", strings.NewReader("{"))
+		req = mux.SetURLVars(req, map[string]string{"id": "1"})
+		res := httptest.NewRecorder()
+		h.Update(res, req)
+		if res.Code != http.StatusBadRequest {
+			t.Fatalf("se esperaba 400, se obtuvo %d", res.Code)
+		}
+	})
+
+	t.Run("update ok", func(t *testing.T) {
+		h := NewHandler(fakeService{updateFn: func(ctx context.Context, id int64, in providerinput.UpdateInput) (*domain.ProveedorSistema, error) {
+			return &domain.ProveedorSistema{IDProveedor: id, RUC: "20123456789", RazonSocial: "Nueva"}, nil
+		}})
+		req := httptest.NewRequest(http.MethodPut, "/api/v1/proveedor/1", strings.NewReader(`{"razon_social":"Nueva"}`))
+		req = mux.SetURLVars(req, map[string]string{"id": "1"})
+		res := httptest.NewRecorder()
+		h.Update(res, req)
+		if res.Code != http.StatusOK {
+			t.Fatalf("se esperaba 200, se obtuvo %d", res.Code)
+		}
+	})
+
+	t.Run("delete id invalido", func(t *testing.T) {
+		h := NewHandler(fakeService{})
+		req := httptest.NewRequest(http.MethodDelete, "/api/v1/proveedor/abc", nil)
+		req = mux.SetURLVars(req, map[string]string{"id": "abc"})
+		res := httptest.NewRecorder()
+		h.Delete(res, req)
+		if res.Code != http.StatusBadRequest {
+			t.Fatalf("se esperaba 400, se obtuvo %d", res.Code)
+		}
+	})
 }

@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -104,9 +105,72 @@ func TestEmpresaHandler_List(t *testing.T) {
 	listW := httptest.NewRecorder()
 	h.List(listW, listReq)
 	assert.Equal(t, http.StatusOK, listW.Code)
-	   var resp struct {
-			   Data []map[string]interface{} `json:"data"`
-	   }
-	   _ = json.Unmarshal(listW.Body.Bytes(), &resp)
-	   assert.GreaterOrEqual(t, len(resp.Data), 2, "Debe listar al menos dos empresas")
+	var resp struct {
+		Data []map[string]interface{} `json:"data"`
+	}
+	_ = json.Unmarshal(listW.Body.Bytes(), &resp)
+	assert.GreaterOrEqual(t, len(resp.Data), 2, "Debe listar al menos dos empresas")
+}
+
+func TestEmpresaHandler_ErrorBranches(t *testing.T) {
+	svc := &EmpresaServiceMock{}
+	h := setupMockHandler(svc)
+
+	t.Run("create invalid json", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/empresa", bytes.NewBufferString("{"))
+		w := httptest.NewRecorder()
+		h.Create(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("update invalid id", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPut, "/api/v1/empresa/abc", bytes.NewBufferString(`{"razon_social":"x"}`))
+		req = mux.SetURLVars(req, map[string]string{"id": "abc"})
+		w := httptest.NewRecorder()
+		h.Update(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("update service error", func(t *testing.T) {
+		in := input.UpdateEmpresaInput{RazonSocial: "Nueva"}
+		svc.On("Update", int64(1), in).Return(input.EmpresaOutput{}, errors.New("db")).Once()
+		req := httptest.NewRequest(http.MethodPut, "/api/v1/empresa/1", bytes.NewBufferString(`{"razon_social":"Nueva"}`))
+		req = mux.SetURLVars(req, map[string]string{"id": "1"})
+		w := httptest.NewRecorder()
+		h.Update(w, req)
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+
+	t.Run("delete invalid id", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodDelete, "/api/v1/empresa/abc", nil)
+		req = mux.SetURLVars(req, map[string]string{"id": "abc"})
+		w := httptest.NewRecorder()
+		h.Delete(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("delete service error", func(t *testing.T) {
+		svc.On("Delete", int64(1)).Return(errors.New("db")).Once()
+		req := httptest.NewRequest(http.MethodDelete, "/api/v1/empresa/1", nil)
+		req = mux.SetURLVars(req, map[string]string{"id": "1"})
+		w := httptest.NewRecorder()
+		h.Delete(w, req)
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+
+	t.Run("get invalid id", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/empresa/abc", nil)
+		req = mux.SetURLVars(req, map[string]string{"id": "abc"})
+		w := httptest.NewRecorder()
+		h.GetByID(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("list service error", func(t *testing.T) {
+		svc.On("List").Return([]input.EmpresaOutput{}, errors.New("db")).Once()
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/empresa", nil)
+		w := httptest.NewRecorder()
+		h.List(w, req)
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
 }

@@ -166,3 +166,111 @@ func TestHandlerDeleteServiceError(t *testing.T) {
 		t.Fatal("se esperaba error")
 	}
 }
+
+func TestPagoHandler_ErrorBranches(t *testing.T) {
+	h := &PagoHandler{service: &fakePagoService{
+		updateFn:  func(int64, input.UpdatePagoInput) (*input.PagoOutput, error) { return nil, errors.New("boom") },
+		getByIDFn: func(int64) (*input.PagoOutput, error) { return nil, errors.New("boom") },
+		listFn: func(page, size int, idVenta *int64) ([]input.PagoOutput, int, error) {
+			if page == 9 {
+				return nil, 0, errors.New("boom")
+			}
+			return nil, 0, nil
+		},
+	}}
+
+	t.Run("create invalid json", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/pago", bytes.NewBufferString("{"))
+		rw := httptest.NewRecorder()
+		h.Create(rw, req)
+		if rw.Code != http.StatusBadRequest {
+			t.Fatalf("esperado 400, obtuvo %d", rw.Code)
+		}
+	})
+
+	t.Run("update invalid id", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPut, "/api/v1/pago/abc", bytes.NewBufferString(`{"estado":"PAGADA"}`))
+		req = mux.SetURLVars(req, map[string]string{"id": "abc"})
+		rw := httptest.NewRecorder()
+		h.Update(rw, req)
+		if rw.Code != http.StatusBadRequest {
+			t.Fatalf("esperado 400, obtuvo %d", rw.Code)
+		}
+	})
+
+	t.Run("update invalid body", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPut, "/api/v1/pago/1", bytes.NewBufferString("{"))
+		req = mux.SetURLVars(req, map[string]string{"id": "1"})
+		rw := httptest.NewRecorder()
+		h.Update(rw, req)
+		if rw.Code != http.StatusBadRequest {
+			t.Fatalf("esperado 400, obtuvo %d", rw.Code)
+		}
+	})
+
+	t.Run("update service error", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPut, "/api/v1/pago/1", bytes.NewBufferString(`{"estado":"PAGADA"}`))
+		req = mux.SetURLVars(req, map[string]string{"id": "1"})
+		rw := httptest.NewRecorder()
+		h.Update(rw, req)
+		if rw.Code != http.StatusInternalServerError {
+			t.Fatalf("esperado 500, obtuvo %d", rw.Code)
+		}
+	})
+
+	t.Run("get invalid id", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/pago/abc", nil)
+		req = mux.SetURLVars(req, map[string]string{"id": "abc"})
+		rw := httptest.NewRecorder()
+		h.GetByID(rw, req)
+		if rw.Code != http.StatusBadRequest {
+			t.Fatalf("esperado 400, obtuvo %d", rw.Code)
+		}
+	})
+
+	t.Run("get service error", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/pago/1", nil)
+		req = mux.SetURLVars(req, map[string]string{"id": "1"})
+		rw := httptest.NewRecorder()
+		h.GetByID(rw, req)
+		if rw.Code != http.StatusInternalServerError {
+			t.Fatalf("esperado 500, obtuvo %d", rw.Code)
+		}
+	})
+
+	t.Run("list invalid pagination", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/pago?page=abc", nil)
+		rw := httptest.NewRecorder()
+		h.List(rw, req)
+		if rw.Code != http.StatusBadRequest {
+			t.Fatalf("esperado 400, obtuvo %d", rw.Code)
+		}
+	})
+
+	t.Run("list invalid id_venta", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/pago?page=1&size=10&id_venta=abc", nil)
+		rw := httptest.NewRecorder()
+		h.List(rw, req)
+		if rw.Code != http.StatusBadRequest {
+			t.Fatalf("esperado 400, obtuvo %d", rw.Code)
+		}
+	})
+
+	t.Run("list service error", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/pago?page=9&size=10", nil)
+		rw := httptest.NewRecorder()
+		h.List(rw, req)
+		if rw.Code != http.StatusInternalServerError {
+			t.Fatalf("esperado 500, obtuvo %d", rw.Code)
+		}
+	})
+
+	t.Run("list nil slice", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/pago?page=1&size=10", nil)
+		rw := httptest.NewRecorder()
+		h.List(rw, req)
+		if rw.Code != http.StatusOK {
+			t.Fatalf("esperado 200, obtuvo %d", rw.Code)
+		}
+	})
+}

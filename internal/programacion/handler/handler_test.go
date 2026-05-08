@@ -148,3 +148,112 @@ func TestHandlerDeleteServiceError(t *testing.T) {
 		t.Fatal("se esperaba error")
 	}
 }
+
+func TestHandlerUpdateDeleteGetAndListBranches(t *testing.T) {
+	h := &ProgramacionHandler{service: &fakeProgramacionService{
+		updateFn: func(id int64, in input.UpdateProgramacionInput) (*input.ProgramacionOutput, error) {
+			return &input.ProgramacionOutput{IDProgramacion: id}, nil
+		},
+		deleteFn: func(id int64) error { return nil },
+		getByIDFn: func(id int64) (*input.ProgramacionOutput, error) {
+			if id == 404 {
+				return nil, errors.New("not found")
+			}
+			return &input.ProgramacionOutput{IDProgramacion: id}, nil
+		},
+		listFn: func(page, size int) ([]input.ProgramacionOutput, int, error) {
+			if page == 9 {
+				return nil, 0, errors.New("db")
+			}
+			return nil, 0, nil
+		},
+	}}
+
+	t.Run("update id invalido", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPut, "/api/v1/programacion/abc", bytes.NewBufferString(`{"estado":"PROGRAMADO"}`))
+		req = mux.SetURLVars(req, map[string]string{"id": "abc"})
+		rw := httptest.NewRecorder()
+		h.Update(rw, req)
+		if rw.Code != http.StatusBadRequest {
+			t.Fatalf("esperado 400, obtuvo %d", rw.Code)
+		}
+	})
+
+	t.Run("update body invalido", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPut, "/api/v1/programacion/1", bytes.NewBufferString("{"))
+		req = mux.SetURLVars(req, map[string]string{"id": "1"})
+		rw := httptest.NewRecorder()
+		h.Update(rw, req)
+		if rw.Code != http.StatusBadRequest {
+			t.Fatalf("esperado 400, obtuvo %d", rw.Code)
+		}
+	})
+
+	t.Run("update ok", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPut, "/api/v1/programacion/1", bytes.NewBufferString(`{"estado":"PROGRAMADO"}`))
+		req = mux.SetURLVars(req, map[string]string{"id": "1"})
+		rw := httptest.NewRecorder()
+		h.Update(rw, req)
+		if rw.Code != http.StatusOK {
+			t.Fatalf("esperado 200, obtuvo %d", rw.Code)
+		}
+	})
+
+	t.Run("delete id invalido", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodDelete, "/api/v1/programacion/abc", nil)
+		req = mux.SetURLVars(req, map[string]string{"id": "abc"})
+		rw := httptest.NewRecorder()
+		h.Delete(rw, req)
+		if rw.Code != http.StatusBadRequest {
+			t.Fatalf("esperado 400, obtuvo %d", rw.Code)
+		}
+	})
+
+	t.Run("delete ok", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodDelete, "/api/v1/programacion/1", nil)
+		req = mux.SetURLVars(req, map[string]string{"id": "1"})
+		rw := httptest.NewRecorder()
+		h.Delete(rw, req)
+		if rw.Code != http.StatusOK {
+			t.Fatalf("esperado 200, obtuvo %d", rw.Code)
+		}
+	})
+
+	t.Run("get service error", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/programacion/404", nil)
+		req = mux.SetURLVars(req, map[string]string{"id": "404"})
+		rw := httptest.NewRecorder()
+		h.GetByID(rw, req)
+		if rw.Code != http.StatusInternalServerError {
+			t.Fatalf("esperado 500, obtuvo %d", rw.Code)
+		}
+	})
+
+	t.Run("get ok", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/programacion/1", nil)
+		req = mux.SetURLVars(req, map[string]string{"id": "1"})
+		rw := httptest.NewRecorder()
+		h.GetByID(rw, req)
+		if rw.Code != http.StatusOK {
+			t.Fatalf("esperado 200, obtuvo %d", rw.Code)
+		}
+	})
+
+	t.Run("list invalid page", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/programacion?page=abc", nil)
+		rw := httptest.NewRecorder()
+		h.List(rw, req)
+		if rw.Code != http.StatusBadRequest {
+			t.Fatalf("esperado 400, obtuvo %d", rw.Code)
+		}
+	})
+
+	t.Run("list service error", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/programacion?page=9&size=10", nil)
+		rw := httptest.NewRecorder()
+		h.List(rw, req)
+		if rw.Code != http.StatusInternalServerError {
+			t.Fatalf("esperado 500, obtuvo %d", rw.Code)
+		}
+	})
+}

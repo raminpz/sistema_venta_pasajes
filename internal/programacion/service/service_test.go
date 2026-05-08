@@ -4,8 +4,11 @@ import (
 	"errors"
 	"sistema_venta_pasajes/internal/programacion/domain"
 	"sistema_venta_pasajes/internal/programacion/input"
+	"sistema_venta_pasajes/pkg"
 	"testing"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type fakeProgramacionRepo struct {
@@ -142,5 +145,131 @@ func TestServiceDeleteLiquidacionConflict(t *testing.T) {
 	err := s.Delete(1)
 	if err == nil {
 		t.Fatal("se esperaba error al eliminar programacion con liquidacion")
+	}
+}
+
+func TestServiceCreateValidationErrors(t *testing.T) {
+	s := NewProgramacionService(&fakeProgramacionRepo{})
+
+	_, err := s.Create(input.CreateProgramacionInput{IDRuta: 0, IDVehiculo: 1, IDConductor: 1, FechaSalida: "2026-04-05 02:00:00"})
+	if err == nil {
+		t.Fatal("se esperaba error por ids requeridos")
+	}
+
+	_, err = s.Create(input.CreateProgramacionInput{IDRuta: 1, IDVehiculo: 1, IDConductor: 1, FechaSalida: "fecha"})
+	if err == nil {
+		t.Fatal("se esperaba error por fecha salida invalida")
+	}
+
+	estado := "INVALIDO"
+	_, err = s.Create(input.CreateProgramacionInput{IDRuta: 1, IDVehiculo: 1, IDConductor: 1, FechaSalida: "2026-04-05 02:00:00", Estado: estado})
+	if err == nil {
+		t.Fatal("se esperaba error por estado invalido")
+	}
+}
+
+func TestServiceGetByIDAndListErrors(t *testing.T) {
+	repo := &fakeProgramacionRepo{
+		getByIDFn: func(id int64) (*domain.Programacion, error) {
+			if id == 1 {
+				now := time.Now()
+				return &domain.Programacion{IDProgramacion: 1, IDRuta: 1, IDVehiculo: 1, IDConductor: 1, FechaSalida: now, Estado: "PROGRAMADO"}, nil
+			}
+			return nil, errors.New("not found")
+		},
+		listFn: func(offset, limit int) ([]domain.Programacion, int, error) {
+			return nil, 0, errors.New("db")
+		},
+	}
+	s := NewProgramacionService(repo)
+
+	if _, err := s.GetByID(0); err == nil {
+		t.Fatal("se esperaba id invalido")
+	}
+	if _, err := s.GetByID(2); err == nil {
+		t.Fatal("se esperaba not found")
+	}
+	if out, err := s.GetByID(1); err != nil || out.IDProgramacion != 1 {
+		t.Fatalf("resultado inesperado: %+v err=%v", out, err)
+	}
+
+	if _, _, err := s.List(1, 10); err == nil {
+		t.Fatal("se esperaba error de lista")
+	}
+}
+
+func TestServiceUpdateValidationBranches(t *testing.T) {
+	now := time.Now()
+	repo := &fakeProgramacionRepo{
+		getByIDFn: func(id int64) (*domain.Programacion, error) {
+			return &domain.Programacion{IDProgramacion: id, IDRuta: 1, IDVehiculo: 1, IDConductor: 1, FechaSalida: now, Estado: "PROGRAMADO"}, nil
+		},
+		updateFn: func(p *domain.Programacion) error { return nil },
+	}
+	s := NewProgramacionService(repo)
+
+	if _, err := s.Update(0, input.UpdateProgramacionInput{}); err == nil {
+		t.Fatal("se esperaba id invalido")
+	}
+
+	neg := int64(-1)
+	if _, err := s.Update(1, input.UpdateProgramacionInput{IDRuta: &neg}); err == nil {
+		t.Fatal("se esperaba error por id_ruta invalido")
+	}
+
+	invalidDate := "fecha"
+	if _, err := s.Update(1, input.UpdateProgramacionInput{FechaSalida: &invalidDate}); err == nil {
+		t.Fatal("se esperaba error por fecha salida invalida")
+	}
+
+	invalidEstado := "X"
+	if _, err := s.Update(1, input.UpdateProgramacionInput{Estado: &invalidEstado}); err == nil {
+		t.Fatal("se esperaba error por estado invalido")
+	}
+
+	salida := "2026-04-05 02:00:00"
+	llegada := "2026-04-05 01:00:00"
+	if _, err := s.Update(1, input.UpdateProgramacionInput{FechaSalida: &salida, FechaLlegada: &llegada}); err == nil {
+		t.Fatal("se esperaba error por llegada menor a salida")
+	}
+}
+
+func TestServiceCreateAndUpdateConflictBranches(t *testing.T) {
+	sCreate := NewProgramacionService(&fakeProgramacionRepo{createFn: func(p *domain.Programacion) error {
+		return pkg.NewAppError(409, "foreign_key_conflict", "fk")
+	}})
+	_, err := sCreate.Create(input.CreateProgramacionInput{IDRuta: 1, IDVehiculo: 1, IDConductor: 1, FechaSalida: "2026-04-05 02:00:00"})
+	if err == nil {
+		t.Fatal("se esperaba conflicto fk en create")
+	}
+
+	now := time.Now()
+	sUpdate := NewProgramacionService(&fakeProgramacionRepo{
+		getByIDFn: func(id int64) (*domain.Programacion, error) {
+			return &domain.Programacion{IDProgramacion: id, IDRuta: 1, IDVehiculo: 1, IDConductor: 1, FechaSalida: now, Estado: "PROGRAMADO"}, nil
+		},
+		updateFn: func(p *domain.Programacion) error {
+			return pkg.NewAppError(409, "foreign_key_conflict", "fk")
+		},
+	})
+	_, err = sUpdate.Update(1, input.UpdateProgramacionInput{})
+	if err == nil {
+		t.Fatal("se esperaba conflicto fk en update")
+	}
+}
+
+func TestServiceDeleteAndGetByIDNotFoundByGorm(t *testing.T) {
+	sDelete := NewProgramacionService(&fakeProgramacionRepo{getByIDFn: func(id int64) (*domain.Programacion, error) {
+		return nil, gorm.ErrRecordNotFound
+	}})
+	if err := sDelete.Delete(1); err == nil {
+		t.Fatal("se esperaba not found en delete")
+	}
+
+	sGet := NewProgramacionService(&fakeProgramacionRepo{getByIDFn: func(id int64) (*domain.Programacion, error) {
+		return nil, gorm.ErrRecordNotFound
+	}})
+	if _, err := sGet.GetByID(1); err == nil {
+		t.Fatal("se esperaba not found en get")
 	}
 }

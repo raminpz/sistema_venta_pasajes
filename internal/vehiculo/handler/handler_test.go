@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sistema_venta_pasajes/internal/vehiculo/util"
@@ -149,4 +150,78 @@ func TestVehiculoHandler_Update(t *testing.T) {
 	var resp map[string]interface{}
 	json.Unmarshal(w.Body.Bytes(), &resp)
 	assert.Equal(t, util.MSG_UPDATED, resp["message"])
+}
+
+func TestVehiculoHandler_AdditionalBranches(t *testing.T) {
+	mockService := new(MockVehiculoService)
+	handler := NewVehiculoHandler(mockService)
+
+	t.Run("create invalid json", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/vehiculo", bytes.NewBufferString("{"))
+		w := httptest.NewRecorder()
+		handler.Create(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("create service error", func(t *testing.T) {
+		in := vehiculoinput.CreateVehiculoInput{NroPlaca: "ABC123"}
+		mockService.On("Create", in).Return((*vehiculoinput.VehiculoOutput)(nil), errors.New("boom")).Once()
+		body, _ := json.Marshal(in)
+		req := httptest.NewRequest(http.MethodPost, "/vehiculo", bytes.NewReader(body))
+		w := httptest.NewRecorder()
+		handler.Create(w, req)
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+
+	t.Run("update invalid id", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPatch, "/vehiculo/abc", bytes.NewBufferString(`{"nro_placa":"AAA-111"}`))
+		r := mux.NewRouter()
+		r.HandleFunc("/vehiculo/{id}", handler.Update).Methods("PATCH")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("update invalid json", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPatch, "/vehiculo/5", bytes.NewBufferString("{"))
+		r := mux.NewRouter()
+		r.HandleFunc("/vehiculo/{id}", handler.Update).Methods("PATCH")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("get invalid id", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/vehiculo/abc", nil)
+		r := mux.NewRouter()
+		r.HandleFunc("/vehiculo/{id}", handler.GetByID).Methods("GET")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("delete service error", func(t *testing.T) {
+		mockService.On("Delete", int64(99)).Return(errors.New("fk")).Once()
+		req := httptest.NewRequest(http.MethodDelete, "/vehiculo/99", nil)
+		r := mux.NewRouter()
+		r.HandleFunc("/vehiculo/{id}", handler.Delete).Methods("DELETE")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+
+	t.Run("list invalid pagination", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/vehiculo?page=x", nil)
+		w := httptest.NewRecorder()
+		handler.List(w, req)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("list service error", func(t *testing.T) {
+		mockService.On("List", 1, 15).Return([]vehiculoinput.VehiculoOutput(nil), 0, errors.New("db")).Once()
+		req := httptest.NewRequest(http.MethodGet, "/vehiculo?page=1&size=15", nil)
+		w := httptest.NewRecorder()
+		handler.List(w, req)
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
 }
