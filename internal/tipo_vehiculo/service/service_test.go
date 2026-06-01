@@ -59,7 +59,7 @@ func TestServiceCreateOK(t *testing.T) {
 	out, err := s.Create(input.CreateTipoVehiculoInput{Nombre: "camioneta", Descripcion: "ruta corta"})
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), out.IDTipoVehiculo)
-	assert.Equal(t, "Camioneta", out.Nombre)
+	assert.Equal(t, "camioneta", out.Nombre)
 }
 
 func TestServiceCreateValidationError(t *testing.T) {
@@ -95,15 +95,15 @@ func TestServiceUpdateOK(t *testing.T) {
 			return &domain.TipoVehiculo{IDTipoVehiculo: id, Nombre: "Combi", Descripcion: "ant"}, nil
 		},
 		updateFn: func(tv *domain.TipoVehiculo) error {
-			assert.Equal(t, "Mini Bus", tv.Nombre)
-			assert.Equal(t, "Interprovincial", tv.Descripcion)
+			assert.Equal(t, "Mini bus", tv.Nombre)
+			assert.Equal(t, "interprovincial", tv.Descripcion)
 			return nil
 		},
 	}
 	s := NewTipoVehiculoService(repo)
 	out, err := s.Update(1, input.UpdateTipoVehiculoInput{Nombre: &nombre, Descripcion: &desc})
 	assert.NoError(t, err)
-	assert.Equal(t, "Mini Bus", out.Nombre)
+	assert.Equal(t, "Mini bus", out.Nombre)
 }
 
 func TestServiceUpdateInvalidID(t *testing.T) {
