@@ -63,6 +63,19 @@ func TestService_GetByID(t *testing.T) {
 	}
 }
 
+func TestService_GetByID_Error(t *testing.T) {
+	svc := New(&mockRepo{
+		GetByIDFn: func(id int) (*domain.Ruta, error) {
+			return nil, errors.New("db error")
+		},
+	})
+
+	_, err := svc.GetByID(context.Background(), 9)
+	if err == nil {
+		t.Fatal("se esperaba error en GetByID")
+	}
+}
+
 func TestService_Update(t *testing.T) {
 	repo := &mockRepo{
 		GetByIDFn: func(id int) (*domain.Ruta, error) {
@@ -86,6 +99,48 @@ func TestService_Update(t *testing.T) {
 	}
 }
 
+func TestService_Update_GetByIDError(t *testing.T) {
+	svc := New(&mockRepo{
+		GetByIDFn: func(id int) (*domain.Ruta, error) {
+			return nil, errors.New("not found")
+		},
+		UpdateFn: func(ruta *domain.Ruta) error {
+			return nil
+		},
+	})
+
+	_, err := svc.Update(context.Background(), 1, input.UpdateRutaInput{DuracionHoras: ptrFloat(4.2)})
+	if err == nil {
+		t.Fatal("se esperaba error en update cuando GetByID falla")
+	}
+}
+
+func TestService_Update_CamposOrigenDestino(t *testing.T) {
+	repo := &mockRepo{
+		GetByIDFn: func(id int) (*domain.Ruta, error) {
+			return &domain.Ruta{IDRuta: id, IDOrigenTerminal: 1, IDDestinoTerminal: 2, DuracionHoras: 5.0}, nil
+		},
+		UpdateFn: func(ruta *domain.Ruta) error {
+			if ruta.IDOrigenTerminal != 10 || ruta.IDDestinoTerminal != 20 || ruta.DuracionHoras != 6.5 {
+				return errors.New("valores no actualizados")
+			}
+			return nil
+		},
+	}
+	svc := New(repo)
+	origen := 10
+	destino := 20
+	duracion := 6.5
+	_, err := svc.Update(context.Background(), 1, input.UpdateRutaInput{
+		IDOrigenTerminal:  &origen,
+		IDDestinoTerminal: &destino,
+		DuracionHoras:     &duracion,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestService_Delete(t *testing.T) {
 	repo := &mockRepo{
 		GetByIDFn: func(id int) (*domain.Ruta, error) {
@@ -101,6 +156,50 @@ func TestService_Delete(t *testing.T) {
 	svc := New(repo)
 	if err := svc.Delete(context.Background(), 1); err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestService_Delete_GetByIDInternalError(t *testing.T) {
+	svc := New(&mockRepo{
+		GetByIDFn: func(id int) (*domain.Ruta, error) {
+			return nil, errors.New("db caída")
+		},
+		DeleteFn: func(id int) error { return nil },
+	})
+
+	err := svc.Delete(context.Background(), 1)
+	if err == nil {
+		t.Fatal("se esperaba error interno")
+	}
+}
+
+func TestService_Delete_NotFoundByGorm(t *testing.T) {
+	svc := New(&mockRepo{
+		GetByIDFn: func(id int) (*domain.Ruta, error) {
+			return nil, gorm.ErrRecordNotFound
+		},
+		DeleteFn: func(id int) error { return nil },
+	})
+
+	err := svc.Delete(context.Background(), 1)
+	if err == nil {
+		t.Fatal("se esperaba not found")
+	}
+}
+
+func TestService_Delete_NotFoundOnDelete(t *testing.T) {
+	svc := New(&mockRepo{
+		GetByIDFn: func(id int) (*domain.Ruta, error) {
+			return &domain.Ruta{IDRuta: id}, nil
+		},
+		DeleteFn: func(id int) error {
+			return gorm.ErrRecordNotFound
+		},
+	})
+
+	err := svc.Delete(context.Background(), 1)
+	if err == nil {
+		t.Fatal("se esperaba not found cuando delete retorna gorm.ErrRecordNotFound")
 	}
 }
 
@@ -181,19 +280,5 @@ func TestService_UpdateAndListErrorBranches(t *testing.T) {
 	_, err = svc.List(context.Background())
 	if err == nil {
 		t.Fatal("se esperaba error en list")
-	}
-}
-
-func TestService_Delete_NotFoundByGorm(t *testing.T) {
-	svc := New(&mockRepo{
-		GetByIDFn: func(id int) (*domain.Ruta, error) {
-			return nil, gorm.ErrRecordNotFound
-		},
-		DeleteFn: func(id int) error { return nil },
-	})
-
-	err := svc.Delete(context.Background(), 1)
-	if err == nil {
-		t.Fatal("se esperaba not found")
 	}
 }

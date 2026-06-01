@@ -15,3 +15,12 @@ func CapitalizeWords(s string) string {
 	return strings.Join(words, " ")
 }
 
+// Capitaliza solo la primera letra: "bus de alto tonelaje" -> "Bus de alto tonelaje"
+func CapitalizeFirst(s string) string {
+	s = strings.ToLower(s)
+	if len(s) == 0 {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
+}
+

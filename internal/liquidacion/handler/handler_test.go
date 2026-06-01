@@ -163,3 +163,124 @@ var resp map[string]interface{}
 json.Unmarshal(w.Body.Bytes(), &resp)
 assert.Equal(t, util.MSG_RESUMEN_CAJA, resp["message"])
 }
+
+func TestHandler_Generar_InvalidJSON(t *testing.T) {
+	mockSvc := new(MockLiquidacionService)
+	h := NewLiquidacionHandler(mockSvc)
+	req := httptest.NewRequest(http.MethodPost, "/liquidacion", bytes.NewBufferString("{invalido"))
+	w := httptest.NewRecorder()
+	h.Generar(w, req)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mockSvc.AssertNotCalled(t, "Generar")
+}
+
+func TestHandler_ActualizarEstado_InvalidID(t *testing.T) {
+	mockSvc := new(MockLiquidacionService)
+	h := NewLiquidacionHandler(mockSvc)
+	req := httptest.NewRequest(http.MethodPut, "/liquidacion/x", bytes.NewBufferString("{}"))
+	req = mux.SetURLVars(req, map[string]string{"id": "x"})
+	w := httptest.NewRecorder()
+	h.ActualizarEstado(w, req)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mockSvc.AssertNotCalled(t, "ActualizarEstado")
+}
+
+func TestHandler_ActualizarEstado_InvalidJSON(t *testing.T) {
+	mockSvc := new(MockLiquidacionService)
+	h := NewLiquidacionHandler(mockSvc)
+	req := httptest.NewRequest(http.MethodPut, "/liquidacion/1", bytes.NewBufferString("{invalido"))
+	req = mux.SetURLVars(req, map[string]string{"id": "1"})
+	w := httptest.NewRecorder()
+	h.ActualizarEstado(w, req)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mockSvc.AssertNotCalled(t, "ActualizarEstado")
+}
+
+func TestHandler_ActualizarEstado_ServiceError(t *testing.T) {
+	mockSvc := new(MockLiquidacionService)
+	h := NewLiquidacionHandler(mockSvc)
+	in := input.ActualizarEstadoInput{Estado: "ENTREGADO"}
+	mockSvc.On("ActualizarEstado", int64(1), in).Return(nil, errors.New("error"))
+	body, _ := json.Marshal(in)
+	req := httptest.NewRequest(http.MethodPut, "/liquidacion/1", bytes.NewReader(body))
+	req = mux.SetURLVars(req, map[string]string{"id": "1"})
+	w := httptest.NewRecorder()
+	h.ActualizarEstado(w, req)
+	assert.NotEqual(t, http.StatusOK, w.Code)
+}
+
+func TestHandler_Delete_InvalidID(t *testing.T) {
+	mockSvc := new(MockLiquidacionService)
+	h := NewLiquidacionHandler(mockSvc)
+	req := httptest.NewRequest(http.MethodDelete, "/liquidacion/x", nil)
+	req = mux.SetURLVars(req, map[string]string{"id": "x"})
+	w := httptest.NewRecorder()
+	h.Delete(w, req)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mockSvc.AssertNotCalled(t, "Delete")
+}
+
+func TestHandler_Delete_ServiceError(t *testing.T) {
+	mockSvc := new(MockLiquidacionService)
+	h := NewLiquidacionHandler(mockSvc)
+	mockSvc.On("Delete", int64(3)).Return(errors.New("fk"))
+	req := httptest.NewRequest(http.MethodDelete, "/liquidacion/3", nil)
+	req = mux.SetURLVars(req, map[string]string{"id": "3"})
+	w := httptest.NewRecorder()
+	h.Delete(w, req)
+	assert.NotEqual(t, http.StatusOK, w.Code)
+}
+
+func TestHandler_GetByID_InvalidID(t *testing.T) {
+	mockSvc := new(MockLiquidacionService)
+	h := NewLiquidacionHandler(mockSvc)
+	req := httptest.NewRequest(http.MethodGet, "/liquidacion/x", nil)
+	req = mux.SetURLVars(req, map[string]string{"id": "x"})
+	w := httptest.NewRecorder()
+	h.GetByID(w, req)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mockSvc.AssertNotCalled(t, "GetByID")
+}
+
+func TestHandler_List_InvalidPagination(t *testing.T) {
+	mockSvc := new(MockLiquidacionService)
+	h := NewLiquidacionHandler(mockSvc)
+	req := httptest.NewRequest(http.MethodGet, "/liquidaciones?page=0&size=0", nil)
+	w := httptest.NewRecorder()
+	h.List(w, req)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mockSvc.AssertNotCalled(t, "List")
+}
+
+func TestHandler_List_ServiceError(t *testing.T) {
+	mockSvc := new(MockLiquidacionService)
+	h := NewLiquidacionHandler(mockSvc)
+	mockSvc.On("List", 1, 15).Return([]input.LiquidacionOutput{}, 0, errors.New("db"))
+	req := httptest.NewRequest(http.MethodGet, "/liquidaciones", nil)
+	w := httptest.NewRecorder()
+	h.List(w, req)
+	assert.NotEqual(t, http.StatusOK, w.Code)
+}
+
+func TestHandler_ObtenerResumenCaja_InvalidID(t *testing.T) {
+	mockSvc := new(MockLiquidacionService)
+	h := NewLiquidacionHandler(mockSvc)
+	req := httptest.NewRequest(http.MethodGet, "/programacion/x/caja", nil)
+	req = mux.SetURLVars(req, map[string]string{"id_programacion": "x"})
+	w := httptest.NewRecorder()
+	h.ObtenerResumenCaja(w, req)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	mockSvc.AssertNotCalled(t, "ObtenerResumenCaja")
+}
+
+func TestHandler_ObtenerResumenCaja_ServiceError(t *testing.T) {
+	mockSvc := new(MockLiquidacionService)
+	h := NewLiquidacionHandler(mockSvc)
+	mockSvc.On("ObtenerResumenCaja", int64(7)).Return(nil, errors.New("db"))
+	req := httptest.NewRequest(http.MethodGet, "/programacion/7/caja", nil)
+	req = mux.SetURLVars(req, map[string]string{"id_programacion": "7"})
+	w := httptest.NewRecorder()
+	h.ObtenerResumenCaja(w, req)
+	assert.NotEqual(t, http.StatusOK, w.Code)
+}
+

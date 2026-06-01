@@ -11,7 +11,7 @@ import (
 
 type mockTramoRepo struct {
 	tramos map[int64]*domain.Tramo
-	nextID int64
+	nextID  int64
 }
 
 func newMockRepo() *mockTramoRepo {
@@ -70,7 +70,58 @@ func (m *mockTramoRepo) ExistsByRutaParadas(idRuta, idOrigen, idDestino int64) (
 	return false, nil
 }
 
-// ── tests ────────────────────────────────────────────────────────────────────
+type mockTramoRepoFn struct {
+	createFn            func(*domain.Tramo) error
+	updateFn            func(*domain.Tramo) error
+	deleteFn            func(int64) error
+	getByIDFn           func(int64) (*domain.Tramo, error)
+	listFn              func(int, int) ([]domain.Tramo, int, error)
+	listByRutaFn        func(int64) ([]domain.Tramo, error)
+	existsByRutaParFn   func(int64, int64, int64) (bool, error)
+}
+
+func (m *mockTramoRepoFn) Create(t *domain.Tramo) error {
+	if m.createFn != nil {
+		return m.createFn(t)
+	}
+	return nil
+}
+func (m *mockTramoRepoFn) Update(t *domain.Tramo) error {
+	if m.updateFn != nil {
+		return m.updateFn(t)
+	}
+	return nil
+}
+func (m *mockTramoRepoFn) Delete(id int64) error {
+	if m.deleteFn != nil {
+		return m.deleteFn(id)
+	}
+	return nil
+}
+func (m *mockTramoRepoFn) GetByID(id int64) (*domain.Tramo, error) {
+	if m.getByIDFn != nil {
+		return m.getByIDFn(id)
+	}
+	return nil, gorm.ErrRecordNotFound
+}
+func (m *mockTramoRepoFn) List(offset, limit int) ([]domain.Tramo, int, error) {
+	if m.listFn != nil {
+		return m.listFn(offset, limit)
+	}
+	return []domain.Tramo{}, 0, nil
+}
+func (m *mockTramoRepoFn) ListByRuta(idRuta int64) ([]domain.Tramo, error) {
+	if m.listByRutaFn != nil {
+		return m.listByRutaFn(idRuta)
+	}
+	return []domain.Tramo{}, nil
+}
+func (m *mockTramoRepoFn) ExistsByRutaParadas(idRuta, idOrigen, idDestino int64) (bool, error) {
+	if m.existsByRutaParFn != nil {
+		return m.existsByRutaParFn(idRuta, idOrigen, idDestino)
+	}
+	return false, nil
+}
 
 func TestCreate_OK(t *testing.T) {
 	svc := NewTramoService(newMockRepo())
@@ -137,6 +188,45 @@ func TestUpdate_EmptyFields(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestUpdate_ExistsCheckError(t *testing.T) {
+	svc := NewTramoService(&mockTramoRepoFn{existsByRutaParFn: func(int64, int64, int64) (bool, error) {
+		return false, assert.AnError
+	}})
+	_, err := svc.Create(input.CreateTramoInput{IDRuta: 1, IDParadaOrigen: 1, IDParadaDestino: 2})
+	assert.Error(t, err)
+}
+
+func TestUpdate_NotFound(t *testing.T) {
+	svc := NewTramoService(&mockTramoRepoFn{getByIDFn: func(int64) (*domain.Tramo, error) {
+		return nil, gorm.ErrRecordNotFound
+	}})
+	ruta := int64(1)
+	origen := int64(1)
+	destino := int64(2)
+	_, err := svc.Update(input.UpdateTramoInput{IDTramo: 1, IDRuta: &ruta, IDParadaOrigen: &origen, IDParadaDestino: &destino})
+	assert.Error(t, err)
+}
+
+func TestUpdate_GetByIDInternalError(t *testing.T) {
+	svc := NewTramoService(&mockTramoRepoFn{getByIDFn: func(int64) (*domain.Tramo, error) {
+		return nil, assert.AnError
+	}})
+	ruta := int64(1)
+	origen := int64(1)
+	destino := int64(2)
+	_, err := svc.Update(input.UpdateTramoInput{IDTramo: 1, IDRuta: &ruta, IDParadaOrigen: &origen, IDParadaDestino: &destino})
+	assert.Error(t, err)
+}
+
+func TestUpdate_ParadasIgualesDespuesDeMerge(t *testing.T) {
+	svc := NewTramoService(&mockTramoRepoFn{getByIDFn: func(int64) (*domain.Tramo, error) {
+		return &domain.Tramo{IDTramo: 1, IDRuta: 1, IDParadaOrigen: 1, IDParadaDestino: 2}, nil
+	}})
+	nueva := int64(1)
+	_, err := svc.Update(input.UpdateTramoInput{IDTramo: 1, IDParadaDestino: &nueva})
+	assert.Error(t, err)
+}
+
 func TestDelete_OK(t *testing.T) {
 	repo := newMockRepo()
 	svc := NewTramoService(repo)
@@ -151,6 +241,23 @@ func TestDelete_NotFound(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestDelete_GetByIDInternalError(t *testing.T) {
+	svc := NewTramoService(&mockTramoRepoFn{getByIDFn: func(int64) (*domain.Tramo, error) {
+		return nil, assert.AnError
+	}})
+	err := svc.Delete(1)
+	assert.Error(t, err)
+}
+
+func TestDelete_DeleteNotFound(t *testing.T) {
+	svc := NewTramoService(&mockTramoRepoFn{
+		getByIDFn: func(int64) (*domain.Tramo, error) { return &domain.Tramo{IDTramo: 1}, nil },
+		deleteFn:  func(int64) error { return gorm.ErrRecordNotFound },
+	})
+	err := svc.Delete(1)
+	assert.Error(t, err)
+}
+
 func TestListByRuta_OK(t *testing.T) {
 	repo := newMockRepo()
 	svc := NewTramoService(repo)
@@ -159,4 +266,31 @@ func TestListByRuta_OK(t *testing.T) {
 	list, err := svc.ListByRuta(1)
 	assert.NoError(t, err)
 	assert.Len(t, list, 1)
+}
+
+func TestList_OK(t *testing.T) {
+	repo := newMockRepo()
+	svc := NewTramoService(repo)
+	_, _ = svc.Create(input.CreateTramoInput{IDRuta: 1, IDParadaOrigen: 1, IDParadaDestino: 2})
+	_, _ = svc.Create(input.CreateTramoInput{IDRuta: 1, IDParadaOrigen: 2, IDParadaDestino: 3})
+	out, total, err := svc.List(1, 15)
+	assert.NoError(t, err)
+	assert.Len(t, out, 2)
+	assert.Equal(t, 2, total)
+}
+
+func TestList_Error(t *testing.T) {
+	svc := NewTramoService(&mockTramoRepoFn{listFn: func(int, int) ([]domain.Tramo, int, error) {
+		return nil, 0, assert.AnError
+	}})
+	_, _, err := svc.List(1, 10)
+	assert.Error(t, err)
+}
+
+func TestListByRuta_Error(t *testing.T) {
+	svc := NewTramoService(&mockTramoRepoFn{listByRutaFn: func(int64) ([]domain.Tramo, error) {
+		return nil, assert.AnError
+	}})
+	_, err := svc.ListByRuta(1)
+	assert.Error(t, err)
 }

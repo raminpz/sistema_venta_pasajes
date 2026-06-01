@@ -3,11 +3,12 @@ package service
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"gorm.io/gorm"
 	"sistema_venta_pasajes/internal/asiento_tramo/domain"
 	"sistema_venta_pasajes/internal/asiento_tramo/input"
 	"sistema_venta_pasajes/internal/asiento_tramo/util"
+
+	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 )
 
 // ── Mock ─────────────────────────────────────────────────────────────────
@@ -235,3 +236,137 @@ func TestAsientoTramo_DeleteByVenta_OK(t *testing.T) {
 	err := svc.DeleteByVenta(idVenta)
 	assert.NoError(t, err)
 }
+
+func TestAsientoTramo_GetByID_InvalidID(t *testing.T) {
+	svc := NewAsientoTramoService(newMockRepo())
+	_, err := svc.GetByID(0)
+	assert.Error(t, err)
+}
+
+func TestAsientoTramo_GetByID_NegativeID(t *testing.T) {
+	svc := NewAsientoTramoService(newMockRepo())
+	_, err := svc.GetByID(-1)
+	assert.Error(t, err)
+}
+
+func TestAsientoTramo_Create_WithVenta(t *testing.T) {
+	svc := NewAsientoTramoService(newMockRepo())
+	idVenta := int64(99)
+	out, err := svc.Create(input.CreateAsientoTramoInput{
+		IDAsiento: 3,
+		IDTramo:   7,
+		Estado:    util.ESTADO_OCUPADO,
+		IDVenta:   &idVenta,
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, util.ESTADO_OCUPADO, out.Estado)
+	assert.Equal(t, idVenta, *out.IDVenta)
+}
+
+func TestAsientoTramo_MarkAsOccupied_InvalidAsiento(t *testing.T) {
+	svc := NewAsientoTramoService(newMockRepo())
+	err := svc.MarkAsOccupied(0, 1, nil)
+	assert.Error(t, err)
+}
+
+func TestAsientoTramo_MarkAsOccupied_InvalidTramo(t *testing.T) {
+	svc := NewAsientoTramoService(newMockRepo())
+	err := svc.MarkAsOccupied(1, 0, nil)
+	assert.Error(t, err)
+}
+
+func TestAsientoTramo_MarkAsAvailable_InvalidAsiento(t *testing.T) {
+	svc := NewAsientoTramoService(newMockRepo())
+	err := svc.MarkAsAvailable(0, 1)
+	assert.Error(t, err)
+}
+
+func TestAsientoTramo_MarkAsAvailable_InvalidTramo(t *testing.T) {
+	svc := NewAsientoTramoService(newMockRepo())
+	err := svc.MarkAsAvailable(1, 0)
+	assert.Error(t, err)
+}
+
+func TestAsientoTramo_GetDisponiblesEnTramo_InvalidID(t *testing.T) {
+	svc := NewAsientoTramoService(newMockRepo())
+	_, err := svc.GetDisponiblesEnTramo(0)
+	assert.Error(t, err)
+}
+
+func TestAsientoTramo_GetDisponiblesEnTramo_Empty(t *testing.T) {
+	svc := NewAsientoTramoService(newMockRepo())
+	// tramo 99 no tiene asientos registrados
+	list, err := svc.GetDisponiblesEnTramo(99)
+	assert.NoError(t, err)
+	assert.Empty(t, list)
+}
+
+func TestAsientoTramo_GetDisponiblesEnTramo_AllOccupied(t *testing.T) {
+	repo := newMockRepo()
+	svc := NewAsientoTramoService(repo)
+	_, _ = svc.Create(input.CreateAsientoTramoInput{IDAsiento: 1, IDTramo: 5, Estado: util.ESTADO_OCUPADO})
+	_, _ = svc.Create(input.CreateAsientoTramoInput{IDAsiento: 2, IDTramo: 5, Estado: util.ESTADO_OCUPADO})
+
+	list, err := svc.GetDisponiblesEnTramo(5)
+	assert.NoError(t, err)
+	assert.Empty(t, list)
+}
+
+func TestAsientoTramo_IsAsientoDisponible_InvalidAsiento(t *testing.T) {
+	svc := NewAsientoTramoService(newMockRepo())
+	_, err := svc.IsAsientoDisponible(0, 1)
+	assert.Error(t, err)
+}
+
+func TestAsientoTramo_IsAsientoDisponible_InvalidTramo(t *testing.T) {
+	svc := NewAsientoTramoService(newMockRepo())
+	_, err := svc.IsAsientoDisponible(1, 0)
+	assert.Error(t, err)
+}
+
+func TestAsientoTramo_IsAsientoDisponible_NotExists(t *testing.T) {
+	// Si no existe el registro, devuelve false sin error (aún no inicializado)
+	svc := NewAsientoTramoService(newMockRepo())
+	disponible, err := svc.IsAsientoDisponible(99, 99)
+	assert.NoError(t, err)
+	assert.False(t, disponible)
+}
+
+func TestAsientoTramo_DeleteByVenta_InvalidID(t *testing.T) {
+	svc := NewAsientoTramoService(newMockRepo())
+	err := svc.DeleteByVenta(0)
+	assert.Error(t, err)
+}
+
+func TestAsientoTramo_DeleteByVenta_NegativeID(t *testing.T) {
+	svc := NewAsientoTramoService(newMockRepo())
+	err := svc.DeleteByVenta(-5)
+	assert.Error(t, err)
+}
+
+func TestAsientoTramo_MarkAsOccupied_NilVenta(t *testing.T) {
+	repo := newMockRepo()
+	svc := NewAsientoTramoService(repo)
+	_, _ = svc.Create(input.CreateAsientoTramoInput{IDAsiento: 10, IDTramo: 3, Estado: util.ESTADO_DISPONIBLE})
+
+	err := svc.MarkAsOccupied(10, 3, nil)
+	assert.NoError(t, err)
+
+	out, _ := svc.GetByID(1)
+	assert.Equal(t, util.ESTADO_OCUPADO, out.Estado)
+}
+
+func TestAsientoTramo_MarkAsAvailable_AfterOccupied(t *testing.T) {
+	repo := newMockRepo()
+	svc := NewAsientoTramoService(repo)
+	idVenta := int64(50)
+	_, _ = svc.Create(input.CreateAsientoTramoInput{IDAsiento: 7, IDTramo: 4, Estado: util.ESTADO_DISPONIBLE})
+	_ = svc.MarkAsOccupied(7, 4, &idVenta)
+	err := svc.MarkAsAvailable(7, 4)
+	assert.NoError(t, err)
+
+	out, _ := svc.GetByID(1)
+	assert.Equal(t, util.ESTADO_DISPONIBLE, out.Estado)
+	assert.Nil(t, out.IDVenta)
+}
+

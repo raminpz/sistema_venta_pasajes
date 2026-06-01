@@ -31,6 +31,7 @@ import (
 	usuariohandler "sistema_venta_pasajes/internal/usuario/handler"
 	vehiculohandler "sistema_venta_pasajes/internal/vehiculo/handler"
 	ventahandler "sistema_venta_pasajes/internal/venta/handler"
+	tipovehiculohandler "sistema_venta_pasajes/internal/tipo_vehiculo/handler"
 )
 
 type AppHandler func(w http.ResponseWriter, r *http.Request) error
@@ -99,6 +100,7 @@ func NewRouter(db *gorm.DB, jwtSecret string, authDisabled ...bool) *mux.Router 
 	}
 
 	terminalhandler.RegisterRoutes(adminRouter, db)
+	tipovehiculohandler.RegisterRoutes(adminRouter, db)
 	empresahandler.RegisterRoutes(adminRouter, db)
 	conductorhandler.RegisterRoutes(adminRouter, db)
 	rutahandler.RegisterRutaRoutes(adminRouter, db)

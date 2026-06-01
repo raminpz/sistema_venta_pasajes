@@ -200,6 +200,7 @@ func TestCoreModuleRoutesAreMountedUnderAPIV1(t *testing.T) {
 		"/api/v1/venta",
 		"/api/v1/liquidaciones",
 		"/api/v1/usuario",
+		"/api/v1/tipo-vehiculo",
 	}
 
 	for _, path := range paths {

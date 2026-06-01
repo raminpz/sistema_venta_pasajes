@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"regexp"
@@ -160,7 +161,7 @@ func ParseDBError(err error, errCode, genericMsg string, fkMessages map[string]s
 		}
 		return Conflict("fk_conflict", "No se pudo completar la operación por restricción de integridad referencial").WithCause(err)
 	case 1265:
-		return BadRequest(errCode, "Uno o más campos tienen un valor inválido para la base de datos").WithCause(err)
+		return BadRequest(errCode, fmt.Sprintf("Error 1265 (01000): %s", mysqlErr.Message)).WithDetails(mysqlErr.Message).WithCause(err)
 	default:
 		return NewAppError(http.StatusInternalServerError, errCode, genericMsg).WithDetails(mysqlErr.Message).WithCause(err)
 	}

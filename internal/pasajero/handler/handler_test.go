@@ -8,9 +8,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gorilla/mux"
 	"sistema_venta_pasajes/internal/pasajero/input"
 	"sistema_venta_pasajes/pkg"
+
+	"github.com/gorilla/mux"
 )
 
 type fakeService struct {
@@ -81,6 +82,22 @@ func TestPasajeroHandler_Create(t *testing.T) {
 func TestPasajeroHandler_Create_JSONInvalido(t *testing.T) {
 	h := &PasajeroHandler{service: &fakeService{}}
 	req := httptest.NewRequest(http.MethodPost, "/pasajero", bytes.NewReader([]byte("{")))
+	rw := httptest.NewRecorder()
+	h.Create(rw, req)
+	if rw.Code != http.StatusBadRequest {
+		t.Fatalf("esperaba status 400, obtuve %d", rw.Code)
+	}
+}
+
+func TestPasajeroHandler_Create_ServiceError(t *testing.T) {
+	svc := &fakeService{
+		CreateFn: func(input.CreatePasajeroInput) (input.PasajeroOutput, error) {
+			return input.PasajeroOutput{}, errors.New("dni duplicado")
+		},
+	}
+	h := &PasajeroHandler{service: svc}
+	body, _ := json.Marshal(input.CreatePasajeroInput{TipoDocumento: "DNI", NroDocumento: "12345678", Nombres: "Juan", Apellidos: "Perez", Telefono: "987654321"})
+	req := httptest.NewRequest(http.MethodPost, "/pasajero", bytes.NewReader(body))
 	rw := httptest.NewRecorder()
 	h.Create(rw, req)
 	if rw.Code != http.StatusBadRequest {
@@ -215,3 +232,152 @@ func TestPasajeroHandler_Search_Errores(t *testing.T) {
 }
 
 func ptrStr(s string) *string { return &s }
+
+func TestPasajeroHandler_Update_Errores(t *testing.T) {
+	h := &PasajeroHandler{service: &fakeService{UpdateFn: func(int64, input.UpdatePasajeroInput) (input.PasajeroOutput, error) {
+		return input.PasajeroOutput{}, errors.New("error update")
+	}}}
+
+	t.Run("missing id", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPut, "/pasajero", bytes.NewReader([]byte(`{"nombres":"A"}`)))
+		req = mux.SetURLVars(req, map[string]string{"id": ""})
+		rw := httptest.NewRecorder()
+		h.Update(rw, req)
+		if rw.Code != http.StatusBadRequest {
+			t.Fatalf("esperaba status 400, obtuve %d", rw.Code)
+		}
+	})
+
+	t.Run("json invalido", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPut, "/pasajero/1", bytes.NewReader([]byte("{")))
+		req = mux.SetURLVars(req, map[string]string{"id": "1"})
+		rw := httptest.NewRecorder()
+		h.Update(rw, req)
+		if rw.Code != http.StatusBadRequest {
+			t.Fatalf("esperaba status 400, obtuve %d", rw.Code)
+		}
+	})
+
+	t.Run("service error", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPut, "/pasajero/1", bytes.NewReader([]byte(`{"nombres":"Luis"}`)))
+		req = mux.SetURLVars(req, map[string]string{"id": "1"})
+		rw := httptest.NewRecorder()
+		h.Update(rw, req)
+		if rw.Code != http.StatusBadRequest {
+			t.Fatalf("esperaba status 400, obtuve %d", rw.Code)
+		}
+	})
+}
+
+func TestPasajeroHandler_Delete_ErroresYOK(t *testing.T) {
+	h := &PasajeroHandler{service: &fakeService{DeleteFn: func(id int64) error {
+		if id == 1 {
+			return nil
+		}
+		return errors.New("error delete")
+	}}}
+
+	t.Run("id invalido", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodDelete, "/pasajero/abc", nil)
+		req = mux.SetURLVars(req, map[string]string{"id": "abc"})
+		rw := httptest.NewRecorder()
+		h.Delete(rw, req)
+		if rw.Code != http.StatusBadRequest {
+			t.Fatalf("esperaba status 400, obtuve %d", rw.Code)
+		}
+	})
+
+	t.Run("service error", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodDelete, "/pasajero/2", nil)
+		req = mux.SetURLVars(req, map[string]string{"id": "2"})
+		rw := httptest.NewRecorder()
+		h.Delete(rw, req)
+		if rw.Code != http.StatusBadRequest {
+			t.Fatalf("esperaba status 400, obtuve %d", rw.Code)
+		}
+	})
+
+	t.Run("ok", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodDelete, "/pasajero/1", nil)
+		req = mux.SetURLVars(req, map[string]string{"id": "1"})
+		rw := httptest.NewRecorder()
+		h.Delete(rw, req)
+		if rw.Code != http.StatusOK {
+			t.Fatalf("esperaba status 200, obtuve %d", rw.Code)
+		}
+	})
+}
+
+func TestPasajeroHandler_GetByID_ErroresYOK(t *testing.T) {
+	h := &PasajeroHandler{service: &fakeService{GetByIDFn: func(id int64) (input.PasajeroOutput, error) {
+		if id == 1 {
+			return input.PasajeroOutput{IDPasajero: 1, Nombres: "Maria"}, nil
+		}
+		return input.PasajeroOutput{}, errors.New("no existe")
+	}}}
+
+	t.Run("missing id", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/pasajero", nil)
+		req = mux.SetURLVars(req, map[string]string{"id": ""})
+		rw := httptest.NewRecorder()
+		h.GetByID(rw, req)
+		if rw.Code != http.StatusBadRequest {
+			t.Fatalf("esperaba status 400, obtuve %d", rw.Code)
+		}
+	})
+
+	t.Run("id invalido", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/pasajero/abc", nil)
+		req = mux.SetURLVars(req, map[string]string{"id": "abc"})
+		rw := httptest.NewRecorder()
+		h.GetByID(rw, req)
+		if rw.Code != http.StatusBadRequest {
+			t.Fatalf("esperaba status 400, obtuve %d", rw.Code)
+		}
+	})
+
+	t.Run("ok", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/pasajero/1", nil)
+		req = mux.SetURLVars(req, map[string]string{"id": "1"})
+		rw := httptest.NewRecorder()
+		h.GetByID(rw, req)
+		if rw.Code != http.StatusOK {
+			t.Fatalf("esperaba status 200, obtuve %d", rw.Code)
+		}
+	})
+}
+
+func TestPasajeroHandler_List_ErroresYVacio(t *testing.T) {
+	hErr := &PasajeroHandler{service: &fakeService{ListFn: func(page, size int) ([]input.PasajeroOutput, pkg.PaginationMeta, error) {
+		return nil, pkg.PaginationMeta{}, errors.New("db")
+	}}}
+	reqErr := httptest.NewRequest(http.MethodGet, "/pasajero?page=1&size=15", nil)
+	rwErr := httptest.NewRecorder()
+	hErr.List(rwErr, reqErr)
+	if rwErr.Code != http.StatusInternalServerError {
+		t.Fatalf("esperaba status 500, obtuve %d", rwErr.Code)
+	}
+
+	hEmpty := &PasajeroHandler{service: &fakeService{ListFn: func(page, size int) ([]input.PasajeroOutput, pkg.PaginationMeta, error) {
+		return nil, pkg.PaginationMeta{Page: page, Size: size, Total: 0}, nil
+	}}}
+	reqEmpty := httptest.NewRequest(http.MethodGet, "/pasajero?page=1&size=15", nil)
+	rwEmpty := httptest.NewRecorder()
+	hEmpty.List(rwEmpty, reqEmpty)
+	if rwEmpty.Code != http.StatusOK {
+		t.Fatalf("esperaba status 200, obtuve %d", rwEmpty.Code)
+	}
+}
+
+func TestPasajeroHandler_Search_EmptyOK(t *testing.T) {
+	h := &PasajeroHandler{service: &fakeService{SearchFn: func(string) ([]input.PasajeroOutput, error) {
+		return nil, nil
+	}}}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/pasajeros/search?q=ana", nil)
+	rw := httptest.NewRecorder()
+	h.Search(rw, req)
+	if rw.Code != http.StatusOK {
+		t.Fatalf("esperaba status 200, obtuve %d", rw.Code)
+	}
+}
+

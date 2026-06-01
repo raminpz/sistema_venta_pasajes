@@ -3,6 +3,7 @@ package handler_test
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -96,6 +97,21 @@ func TestHandler_GetStatus_OK(t *testing.T) {
 	svc.AssertExpectations(t)
 }
 
+func TestHandler_GetStatus_ServiceError(t *testing.T) {
+	svc := new(mockService)
+	h := handler.New(svc)
+	r := newTestRouter(h)
+
+	svc.On("GetStatus").Return(nil, errors.New("db down"))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/control-acceso/status", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.NotEqual(t, http.StatusOK, w.Code)
+	svc.AssertExpectations(t)
+}
+
 func TestHandler_GetLatest_OK(t *testing.T) {
 	svc := new(mockService)
 	h := handler.New(svc)
@@ -112,6 +128,21 @@ func TestHandler_GetLatest_OK(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
+	svc.AssertExpectations(t)
+}
+
+func TestHandler_GetLatest_ServiceError(t *testing.T) {
+	svc := new(mockService)
+	h := handler.New(svc)
+	r := newTestRouter(h)
+
+	svc.On("GetLatest").Return(nil, errors.New("db down"))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/control-acceso", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.NotEqual(t, http.StatusOK, w.Code)
 	svc.AssertExpectations(t)
 }
 
@@ -142,6 +173,20 @@ func TestHandler_Create_OK(t *testing.T) {
 	svc.AssertExpectations(t)
 }
 
+func TestHandler_Create_InvalidJSON(t *testing.T) {
+	svc := new(mockService)
+	h := handler.New(svc)
+	r := newTestRouter(h)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/control-acceso", bytes.NewBufferString("{invalido"))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	svc.AssertNotCalled(t, "Create")
+}
+
 func TestHandler_Activar_OK(t *testing.T) {
 	svc := new(mockService)
 	h := handler.New(svc)
@@ -157,6 +202,34 @@ func TestHandler_Activar_OK(t *testing.T) {
 	svc.AssertExpectations(t)
 }
 
+func TestHandler_Activar_InvalidID(t *testing.T) {
+	svc := new(mockService)
+	h := handler.New(svc)
+
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/control-acceso/x/activar", nil)
+	req = mux.SetURLVars(req, map[string]string{"id": "x"})
+	w := httptest.NewRecorder()
+	h.Activar(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	svc.AssertNotCalled(t, "Activar")
+}
+
+func TestHandler_Activar_ServiceError(t *testing.T) {
+	svc := new(mockService)
+	h := handler.New(svc)
+	r := newTestRouter(h)
+
+	svc.On("Activar", int64(1)).Return(errors.New("no permitido"))
+
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/control-acceso/1/activar", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.NotEqual(t, http.StatusOK, w.Code)
+	svc.AssertExpectations(t)
+}
+
 func TestHandler_Bloquear_OK(t *testing.T) {
 	svc := new(mockService)
 	h := handler.New(svc)
@@ -169,6 +242,34 @@ func TestHandler_Bloquear_OK(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
+	svc.AssertExpectations(t)
+}
+
+func TestHandler_Bloquear_InvalidID(t *testing.T) {
+	svc := new(mockService)
+	h := handler.New(svc)
+
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/control-acceso/x/bloquear", nil)
+	req = mux.SetURLVars(req, map[string]string{"id": "x"})
+	w := httptest.NewRecorder()
+	h.Bloquear(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	svc.AssertNotCalled(t, "Bloquear")
+}
+
+func TestHandler_Bloquear_ServiceError(t *testing.T) {
+	svc := new(mockService)
+	h := handler.New(svc)
+	r := newTestRouter(h)
+
+	svc.On("Bloquear", int64(1)).Return(errors.New("no permitido"))
+
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/control-acceso/1/bloquear", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.NotEqual(t, http.StatusOK, w.Code)
 	svc.AssertExpectations(t)
 }
 
@@ -190,6 +291,51 @@ func TestHandler_Renovar_OK(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
+	svc.AssertExpectations(t)
+}
+
+func TestHandler_Renovar_InvalidID(t *testing.T) {
+	svc := new(mockService)
+	h := handler.New(svc)
+
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/control-acceso/x/renovar", bytes.NewBufferString("{}"))
+	req = mux.SetURLVars(req, map[string]string{"id": "x"})
+	w := httptest.NewRecorder()
+	h.Renovar(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	svc.AssertNotCalled(t, "Renovar")
+}
+
+func TestHandler_Renovar_InvalidJSON(t *testing.T) {
+	svc := new(mockService)
+	h := handler.New(svc)
+	r := newTestRouter(h)
+
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/control-acceso/1/renovar", bytes.NewBufferString("{invalido"))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	svc.AssertNotCalled(t, "Renovar")
+}
+
+func TestHandler_Renovar_ServiceError(t *testing.T) {
+	svc := new(mockService)
+	h := handler.New(svc)
+	r := newTestRouter(h)
+
+	in := input.RenovarControlAccesoInput{FechaExpiracion: "2028-01-01"}
+	svc.On("Renovar", int64(1), in).Return(nil, errors.New("error de servicio"))
+
+	body, _ := json.Marshal(in)
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/control-acceso/1/renovar", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.NotEqual(t, http.StatusOK, w.Code)
 	svc.AssertExpectations(t)
 }
 
