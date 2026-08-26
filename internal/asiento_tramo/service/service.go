@@ -115,7 +115,8 @@ func (s *asientoTramoService) IsAsientoDisponible(idAsiento, idTramo int64) (boo
 	at, err := s.repo.GetByAsientoTramo(idAsiento, idTramo)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return false, nil // Si no existe el registro, está disponible (pero necesita inicializarse)
+			// Si no existe registro previo, el asiento está disponible
+			return true, nil
 		}
 		return false, err
 	}

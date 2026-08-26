@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"sistema_venta_pasajes/internal/asiento_tramo/domain"
 
 	"gorm.io/gorm"
@@ -70,12 +71,26 @@ func (r *asientoTramoRepository) GetDisponiblesEnTramo(idTramo int64) ([]domain.
 }
 
 func (r *asientoTramoRepository) MarkAsOccupied(idAsiento, idTramo int64, idVenta *int64) error {
-	return r.db.Model(&domain.AsientoTramo{}).
-		Where("ID_ASIENTO = ? AND ID_TRAMO = ?", idAsiento, idTramo).
-		Updates(map[string]interface{}{
-			"ESTADO":   "OCUPADO",
-			"ID_VENTA": idVenta,
-		}).Error
+	var at domain.AsientoTramo
+	err := r.db.Where("ID_ASIENTO = ? AND ID_TRAMO = ?", idAsiento, idTramo).First(&at).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// Crear registro nuevo como OCUPADO
+			at = domain.AsientoTramo{
+				IDAsiento: idAsiento,
+				IDTramo:   idTramo,
+				IDVenta:   idVenta,
+				Estado:    "OCUPADO",
+			}
+			return r.db.Create(&at).Error
+		}
+		return err
+	}
+	// Actualizar registro existente
+	return r.db.Model(&at).Updates(map[string]interface{}{
+		"ESTADO":   "OCUPADO",
+		"ID_VENTA": idVenta,
+	}).Error
 }
 
 func (r *asientoTramoRepository) MarkAsAvailable(idAsiento, idTramo int64) error {

@@ -325,11 +325,11 @@ func TestAsientoTramo_IsAsientoDisponible_InvalidTramo(t *testing.T) {
 }
 
 func TestAsientoTramo_IsAsientoDisponible_NotExists(t *testing.T) {
-	// Si no existe el registro, devuelve false sin error (aún no inicializado)
+	// Si no existe el registro, el asiento está disponible (nunca ha sido ocupado)
 	svc := NewAsientoTramoService(newMockRepo())
 	disponible, err := svc.IsAsientoDisponible(99, 99)
 	assert.NoError(t, err)
-	assert.False(t, disponible)
+	assert.True(t, disponible)
 }
 
 func TestAsientoTramo_DeleteByVenta_InvalidID(t *testing.T) {
